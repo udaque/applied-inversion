@@ -902,10 +902,20 @@
     try {
       const { blob, ext } = await exportImage();
       if (!blob) return;
+      const filename = `inversion.${ext}`;
+      const file = new File([blob], filename, { type: blob.type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Inverted Image' });
+          return;
+        } catch (err) {
+          if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
+        }
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `inversion.${ext}`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
