@@ -153,6 +153,30 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
+  .strength-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 12px;
+  }
+  .strength-row > label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    min-width: 48px;
+  }
+  .strength-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+  .strength-row #strengthValue {
+    min-width: 52px;
+    text-align: right;
+    font-size: 13px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
   .control input[type="number"] {
     background: #0a0d11;
     border: 1px solid var(--border);
@@ -355,6 +379,11 @@
         <input type="number" id="rInput" min="1" step="1" value="100">
       </div>
     </div>
+    <div class="strength-row">
+      <label for="strengthInput" data-i18n="strength">강도</label>
+      <input type="range" id="strengthInput" min="0" max="100" step="1" value="100">
+      <span id="strengthValue">100%</span>
+    </div>
     <details id="advanced">
       <summary data-i18n="advanced">고급 옵션</summary>
       <div class="advanced-body">
@@ -463,6 +492,7 @@
     const out = new ImageData(w, h);
     const dst = out.data;
     const { cx, cy, r, fill, mode, outside } = params;
+    const strength = typeof params.strength === 'number' ? params.strength : 1;
     const r2 = r * r;
     const fr = fill[0], fg = fill[1], fb = fill[2], fa = fill[3];
     const edge = outside === 'edge';
@@ -481,7 +511,10 @@
           const d2 = dx * dx + dy2;
           const o = rowOut + x * 4;
           if (d2 < 0.5) {
-            if (edge) {
+            if (strength <= 0) {
+              const si = (y * w + x) * 4;
+              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
+            } else if (edge) {
               const si = (cyClamped * w + cxClamped) * 4;
               dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
             } else {
@@ -490,8 +523,9 @@
             continue;
           }
           const k = r2 / d2;
-          let sx = cx + dx * k;
-          let sy = cy + dy * k;
+          const mult = 1 + strength * (k - 1);
+          let sx = cx + dx * mult;
+          let sy = cy + dy * mult;
           if (sx < 0 || sy < 0 || sx > wMax || sy > hMax) {
             if (edge) {
               if (sx < 0) sx = 0; else if (sx > wMax) sx = wMax;
@@ -534,7 +568,10 @@
           const d2 = dx * dx + dy2;
           const o = rowOut + x * 4;
           if (d2 < 0.5) {
-            if (edge) {
+            if (strength <= 0) {
+              const si = (y * w + x) * 4;
+              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
+            } else if (edge) {
               const si = (cyClamped * w + cxClamped) * 4;
               dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
             } else {
@@ -543,8 +580,9 @@
             continue;
           }
           const k = r2 / d2;
-          const sx = cx + dx * k;
-          const sy = cy + dy * k;
+          const mult = 1 + strength * (k - 1);
+          const sx = cx + dx * mult;
+          const sy = cy + dy * mult;
           let ix = sx | 0;
           let iy = sy | 0;
           if (ix < 0 || iy < 0 || ix >= w || iy >= h) {
@@ -638,6 +676,7 @@
       cx: '중심 X (%)',
       cy: '중심 Y (%)',
       radius: '반지름 (px, 미리보기 기준)',
+      strength: '강도',
       advanced: '고급 옵션',
       fillLabel: '정보 없는 영역',
       fillBlack: '검정',
@@ -680,6 +719,7 @@
       cx: 'Center X (%)',
       cy: 'Center Y (%)',
       radius: 'Radius (px, preview scale)',
+      strength: 'Strength',
       advanced: 'Advanced options',
       fillLabel: 'Undefined region',
       fillBlack: 'Black',
@@ -759,6 +799,9 @@
     params.set('fc', fillColor.value);
     params.set('samp', (document.querySelector('input[name="sampling"]:checked') || {}).value || 'bilinear');
     params.set('grid', gridOverlay.checked ? '1' : '0');
+    if (state) {
+      params.set('st', Math.round((state.strength != null ? state.strength : 1) * 100));
+    }
     if (state && state.previewData) {
       const minD = Math.min(state.previewW, state.previewH);
       params.set('cx', (state.cx / state.previewW * 100).toFixed(2));
@@ -795,6 +838,13 @@
     }
     if (p.get('grid') === '1') gridOverlay.checked = true;
     else if (p.get('grid') === '0') gridOverlay.checked = false;
+    const st = parseFloat(p.get('st'));
+    if (isFinite(st)) {
+      const s = Math.max(0, Math.min(1, st / 100));
+      state.strength = s;
+      strengthInput.value = Math.round(s * 100);
+      strengthValue.textContent = `${Math.round(s * 100)}%`;
+    }
   }
 
   function initLang() {
@@ -818,6 +868,8 @@
   const fillMode = document.getElementById('fillMode');
   const fillColor = document.getElementById('fillColor');
   const saveFullRes = document.getElementById('saveFullRes');
+  const strengthInput = document.getElementById('strengthInput');
+  const strengthValue = document.getElementById('strengthValue');
   const metaEl = document.getElementById('meta');
 
   const lctx = leftCanvas.getContext('2d');
@@ -840,6 +892,7 @@
     cx: 0,
     cy: 0,
     r: 0,
+    strength: 1,
     dragMode: null,
   };
 
@@ -906,6 +959,7 @@
       cx: state.cx,
       cy: state.cy,
       r: state.r,
+      strength: state.strength,
       fill: parseFill(),
       mode: getSamplingMode(),
       outside: fillMode.value === 'edge' ? 'edge' : 'fill',
@@ -1047,7 +1101,9 @@
     const src = state.previewData.data;
     const out = rctx.createImageData(w, h);
     const dst = out.data;
-    const { cx, cy, r, fill, mode, outside } = currentParams();
+    const params = currentParams();
+    const { cx, cy, r, fill, mode, outside } = params;
+    const strength = typeof params.strength === 'number' ? params.strength : 1;
     const r2 = r * r;
     const [fr, fg, fb, fa] = fill;
     const edge = outside === 'edge';
@@ -1060,14 +1116,18 @@
         for (let x = 0; x < w; x++) {
           const dx = x - cx, d2 = dx*dx + dy2, o = rowOut + x*4;
           if (d2 < 0.5) {
-            if (edge) {
+            if (strength <= 0) {
+              const si = (y*w + x)*4;
+              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
+            } else if (edge) {
               const si = (cyC*w + cxC)*4;
               dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
             } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
             continue;
           }
           const k = r2/d2;
-          let sx = cx + dx*k, sy = cy + dy*k;
+          const mult = 1 + strength * (k - 1);
+          let sx = cx + dx*mult, sy = cy + dy*mult;
           if (sx < 0 || sy < 0 || sx > wMax || sy > hMax) {
             if (edge) {
               if (sx < 0) sx = 0; else if (sx > wMax) sx = wMax;
@@ -1095,13 +1155,18 @@
         for (let x = 0; x < w; x++) {
           const dx = x - cx, d2 = dx*dx + dy2, o = rowOut + x*4;
           if (d2 < 0.5) {
-            if (edge) {
+            if (strength <= 0) {
+              const si = (y*w + x)*4;
+              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
+            } else if (edge) {
               const si = (cyC*w + cxC)*4;
               dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
             } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
             continue;
           }
-          const k = r2/d2, sx = cx + dx*k, sy = cy + dy*k;
+          const k = r2/d2;
+          const mult = 1 + strength * (k - 1);
+          const sx = cx + dx*mult, sy = cy + dy*mult;
           let ix = sx|0, iy = sy|0;
           if (ix < 0 || iy < 0 || ix >= w || iy >= h) {
             if (edge) {
@@ -1181,6 +1246,8 @@
     cyInput.value = (state.cy / state.previewH * 100).toFixed(2);
     rInput.value = Math.round(state.r);
     rInput.max = Math.max(state.previewW, state.previewH) * 4;
+    strengthInput.value = Math.round(state.strength * 100);
+    strengthValue.textContent = `${Math.round(state.strength * 100)}%`;
   }
 
   function updateMeta() {
@@ -1341,6 +1408,15 @@
       requestRender();
     }
   });
+  strengthInput.addEventListener('input', () => {
+    const v = parseFloat(strengthInput.value);
+    if (!isNaN(v)) {
+      state.strength = Math.max(0, Math.min(1, v / 100));
+      strengthValue.textContent = `${Math.round(state.strength * 100)}%`;
+      if (state.previewData) requestRender();
+      else scheduleHashWrite();
+    }
+  });
 
   function syncFillColorEnabled() {
     const on = fillMode.value === 'custom';
@@ -1414,6 +1490,7 @@
       const [fr, fg, fb, fa] = parseFill();
       const mode = getSamplingMode();
       const edge = fillMode.value === 'edge';
+      const strength = typeof state.strength === 'number' ? state.strength : 1;
       const wMax = w - 1, hMax = h - 1;
       const cxC = cx < 0 ? 0 : (cx > wMax ? wMax : cx | 0);
       const cyC = cy < 0 ? 0 : (cy > hMax ? hMax : cy | 0);
@@ -1422,14 +1499,18 @@
         for (let x = 0; x < w; x++) {
           const dx = x - cx, d2 = dx*dx + dy2, o = rowOut + x*4;
           if (d2 < 0.5) {
-            if (edge) {
+            if (strength <= 0) {
+              const si = (y*w + x)*4;
+              dst[o]=srcArr[si]; dst[o+1]=srcArr[si+1]; dst[o+2]=srcArr[si+2]; dst[o+3]=srcArr[si+3];
+            } else if (edge) {
               const si = (cyC*w + cxC)*4;
               dst[o]=srcArr[si]; dst[o+1]=srcArr[si+1]; dst[o+2]=srcArr[si+2]; dst[o+3]=srcArr[si+3];
             } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
             continue;
           }
           const k = r2/d2;
-          let sxp = cx + dx*k, syp = cy + dy*k;
+          const mult = 1 + strength * (k - 1);
+          let sxp = cx + dx*mult, syp = cy + dy*mult;
           const inBounds = sxp >= 0 && syp >= 0 && sxp <= wMax && syp <= hMax;
           if (mode === 'bilinear' && inBounds) {
             const ix=sxp|0, iy=syp|0, fxp=sxp-ix, fyp=syp-iy;
