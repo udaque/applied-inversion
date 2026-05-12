@@ -343,6 +343,8 @@
       <option value="image/jpeg">JPEG</option>
       <option value="image/webp">WEBP</option>
     </select>
+    <button id="undoBtn" type="button" data-i18n-title="undo" disabled>↶</button>
+    <button id="redoBtn" type="button" data-i18n-title="redo" disabled>↷</button>
     <button id="saveBtn" class="primary" data-i18n="save">저장</button>
     <div class="share-wrap" id="shareWrap">
       <button id="shareBtn" data-i18n="share">공유</button>
@@ -691,6 +693,8 @@
       title: 'Image Inversion',
       save: '저장',
       saving: '저장 중…',
+      undo: '실행 취소 (Ctrl/⌘ Z)',
+      redo: '다시 실행 (Ctrl/⌘ ⇧ Z)',
       leftPanel: '원본 / 반전원',
       uploadPrompt: '이미지를 업로드해 주세요',
       cx: '중심 X (%)',
@@ -734,6 +738,8 @@
       title: 'Image Inversion',
       save: 'Save',
       saving: 'Saving…',
+      undo: 'Undo (Ctrl/⌘ Z)',
+      redo: 'Redo (Ctrl/⌘ ⇧ Z)',
       leftPanel: 'Source / Inversion circle',
       uploadPrompt: 'Upload an image',
       cx: 'Center X (%)',
@@ -790,6 +796,10 @@
     document.querySelectorAll('[data-i18n-html]').forEach((el) => {
       const key = el.dataset.i18nHtml;
       if (dict[key]) el.innerHTML = dict[key];
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+      const key = el.dataset.i18nTitle;
+      if (dict[key]) el.title = dict[key];
     });
     if (state.previewData) updateMeta();
   }
@@ -1159,6 +1169,7 @@
       } else {
         renderSyncFallback();
       }
+      resetHistory();
     };
     img.src = url;
   }
@@ -1450,6 +1461,7 @@
     if (state.dragMode) {
       state.dragMode = null;
       try { leftCanvas.releasePointerCapture(e.pointerId); } catch {}
+      pushSnapshot();
     }
   };
   leftCanvas.addEventListener('pointerup', endDrag);
@@ -1492,6 +1504,11 @@
     }
   });
 
+  cxInput.addEventListener('change', pushSnapshot);
+  cyInput.addEventListener('change', pushSnapshot);
+  rInput.addEventListener('change', pushSnapshot);
+  strengthInput.addEventListener('change', pushSnapshot);
+
   function syncFillColorEnabled() {
     const on = fillMode.value === 'custom';
     fillColor.disabled = !on;
@@ -1501,19 +1518,25 @@
   fillMode.addEventListener('change', () => {
     syncFillColorEnabled();
     requestRender();
+    pushSnapshot();
   });
   fillColor.addEventListener('input', () => {
     if (fillMode.value === 'custom') requestRender();
     else scheduleHashWrite();
   });
+  fillColor.addEventListener('change', pushSnapshot);
   document.querySelectorAll('input[name="sampling"]').forEach(el => {
-    el.addEventListener('change', requestRender);
+    el.addEventListener('change', () => {
+      requestRender();
+      pushSnapshot();
+    });
   });
 
   gridOverlay.addEventListener('change', () => {
     drawOverlay();
     drawGridOverlay();
     scheduleHashWrite();
+    pushSnapshot();
   });
   gridSpacing.addEventListener('input', () => {
     if (gridOverlay.checked) {
@@ -1522,6 +1545,7 @@
     }
     scheduleHashWrite();
   });
+  gridSpacing.addEventListener('change', pushSnapshot);
 
   fileInput.addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
@@ -1624,6 +1648,113 @@
       target.toBlob((blob) => resolve({ blob, ext }), type, 0.95);
     });
   }
+
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  let historyStack = [];
+  let historyIndex = -1;
+  const HISTORY_MAX = 50;
+
+  function getSnapshot() {
+    return {
+      cx: state.cx,
+      cy: state.cy,
+      r: state.r,
+      strength: state.strength,
+      fillMode: fillMode.value,
+      fillColor: fillColor.value,
+      sampling: getSamplingMode(),
+      gridOverlay: gridOverlay.checked,
+      gridSpacing: gridSpacing.value,
+    };
+  }
+
+  function snapshotsEqual(a, b) {
+    if (!a || !b) return false;
+    return a.cx === b.cx && a.cy === b.cy && a.r === b.r &&
+      a.strength === b.strength && a.fillMode === b.fillMode &&
+      a.fillColor === b.fillColor && a.sampling === b.sampling &&
+      a.gridOverlay === b.gridOverlay && a.gridSpacing === b.gridSpacing;
+  }
+
+  function applySnapshot(snap) {
+    state.cx = snap.cx;
+    state.cy = snap.cy;
+    state.r = snap.r;
+    state.strength = snap.strength;
+    fillMode.value = snap.fillMode;
+    fillColor.value = snap.fillColor;
+    document.querySelectorAll('input[name="sampling"]').forEach((r) => {
+      r.checked = r.value === snap.sampling;
+    });
+    gridOverlay.checked = snap.gridOverlay;
+    gridSpacing.value = snap.gridSpacing;
+    syncFillColorEnabled();
+    updateInputs();
+    updateMeta();
+    drawOverlay();
+    drawGridOverlay();
+    if (worker) sendRender();
+    else renderSyncFallback();
+    scheduleHashWrite();
+    scheduleHiResRender();
+  }
+
+  function pushSnapshot() {
+    if (!state.previewData) return;
+    const snap = getSnapshot();
+    if (snapshotsEqual(historyStack[historyIndex], snap)) return;
+    historyStack = historyStack.slice(0, historyIndex + 1);
+    historyStack.push(snap);
+    if (historyStack.length > HISTORY_MAX) {
+      historyStack = historyStack.slice(-HISTORY_MAX);
+    }
+    historyIndex = historyStack.length - 1;
+    updateUndoButtons();
+  }
+
+  function undo() {
+    if (historyIndex <= 0) return;
+    historyIndex--;
+    applySnapshot(historyStack[historyIndex]);
+    updateUndoButtons();
+  }
+
+  function redo() {
+    if (historyIndex >= historyStack.length - 1) return;
+    historyIndex++;
+    applySnapshot(historyStack[historyIndex]);
+    updateUndoButtons();
+  }
+
+  function updateUndoButtons() {
+    undoBtn.disabled = historyIndex <= 0;
+    redoBtn.disabled = historyIndex >= historyStack.length - 1;
+  }
+
+  function resetHistory() {
+    historyStack = [];
+    historyIndex = -1;
+    pushSnapshot();
+  }
+
+  undoBtn.addEventListener('click', undo);
+  redoBtn.addEventListener('click', redo);
+
+  document.addEventListener('keydown', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input, textarea, select')) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    const key = e.key.toLowerCase();
+    if (key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+      e.preventDefault();
+      redo();
+    }
+  });
 
   saveBtn.addEventListener('click', async () => {
     if (!state.previewData) return;
