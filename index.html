@@ -463,8 +463,16 @@
       offscreen.width = preview.w;
       offscreen.height = preview.h;
     } else if (msg.type === 'render') {
+      if (offscreen.width !== preview.w) offscreen.width = preview.w;
+      if (offscreen.height !== preview.h) offscreen.height = preview.h;
       renderTo(ctx, preview, msg.params);
       self.postMessage({ type: 'rendered', token: msg.token });
+    } else if (msg.type === 'renderHiRes') {
+      const bw = msg.bitmapW, bh = msg.bitmapH;
+      if (offscreen.width !== bw) offscreen.width = bw;
+      if (offscreen.height !== bh) offscreen.height = bh;
+      renderTo(ctx, full, msg.params, bw, bh);
+      self.postMessage({ type: 'renderedHiRes' });
     } else if (msg.type === 'export') {
       const useFull = !!msg.useFull;
       const src = useFull ? full : preview;
@@ -493,36 +501,43 @@
     }
   };
 
-  function renderTo(targetCtx, src, params) {
-    const w = src.w, h = src.h;
+  function renderTo(targetCtx, src, params, outW, outH) {
+    outW = outW || src.w;
+    outH = outH || src.h;
+    const sw = src.w, sh = src.h;
+    const swMax = sw - 1, shMax = sh - 1;
+    const swScale = sw / outW;
+    const shScale = sh / outH;
     const srcData = src.data;
-    const out = new ImageData(w, h);
+    const out = new ImageData(outW, outH);
     const dst = out.data;
     const { cx, cy, r, fill, mode, outside } = params;
     const strength = typeof params.strength === 'number' ? params.strength : 1;
     const r2 = r * r;
     const fr = fill[0], fg = fill[1], fb = fill[2], fa = fill[3];
     const edge = outside === 'edge';
-    const wMax = w - 1;
-    const hMax = h - 1;
-    const cxClamped = cx < 0 ? 0 : (cx > wMax ? wMax : cx | 0);
-    const cyClamped = cy < 0 ? 0 : (cy > hMax ? hMax : cy | 0);
+    const cxSrc = cx * swScale;
+    const cySrc = cy * shScale;
+    const cxClamped = cxSrc < 0 ? 0 : (cxSrc > swMax ? swMax : cxSrc | 0);
+    const cyClamped = cySrc < 0 ? 0 : (cySrc > shMax ? shMax : cySrc | 0);
 
     if (mode === 'bilinear') {
-      for (let y = 0; y < h; y++) {
+      for (let y = 0; y < outH; y++) {
         const dy = y - cy;
         const dy2 = dy * dy;
-        const rowOut = y * w * 4;
-        for (let x = 0; x < w; x++) {
+        const rowOut = y * outW * 4;
+        for (let x = 0; x < outW; x++) {
           const dx = x - cx;
           const d2 = dx * dx + dy2;
           const o = rowOut + x * 4;
           if (d2 < 0.5) {
             if (strength <= 0) {
-              const si = (y * w + x) * 4;
+              const sxi = (x * swScale) | 0;
+              const syi = (y * shScale) | 0;
+              const si = (syi * sw + sxi) * 4;
               dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
             } else if (edge) {
-              const si = (cyClamped * w + cxClamped) * 4;
+              const si = (cyClamped * sw + cxClamped) * 4;
               dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
             } else {
               dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
@@ -531,14 +546,14 @@
           }
           const k = r2 / d2;
           const mult = 1 + strength * (k - 1);
-          let sx = cx + dx * mult;
-          let sy = cy + dy * mult;
-          if (sx < 0 || sy < 0 || sx > wMax || sy > hMax) {
+          let sx = (cx + dx * mult) * swScale;
+          let sy = (cy + dy * mult) * shScale;
+          if (sx < 0 || sy < 0 || sx > swMax || sy > shMax) {
             if (edge) {
-              if (sx < 0) sx = 0; else if (sx > wMax) sx = wMax;
-              if (sy < 0) sy = 0; else if (sy > hMax) sy = hMax;
+              if (sx < 0) sx = 0; else if (sx > swMax) sx = swMax;
+              if (sy < 0) sy = 0; else if (sy > shMax) sy = shMax;
               const ix = sx | 0, iy = sy | 0;
-              const si = (iy * w + ix) * 4;
+              const si = (iy * sw + ix) * 4;
               dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
             } else {
               dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
@@ -549,12 +564,12 @@
           const iy = sy | 0;
           const fx = sx - ix;
           const fy = sy - iy;
-          const ix1 = ix < wMax ? ix + 1 : ix;
-          const iy1 = iy < hMax ? iy + 1 : iy;
-          const i00 = (iy  * w + ix ) * 4;
-          const i10 = (iy  * w + ix1) * 4;
-          const i01 = (iy1 * w + ix ) * 4;
-          const i11 = (iy1 * w + ix1) * 4;
+          const ix1 = ix < swMax ? ix + 1 : ix;
+          const iy1 = iy < shMax ? iy + 1 : iy;
+          const i00 = (iy  * sw + ix ) * 4;
+          const i10 = (iy  * sw + ix1) * 4;
+          const i01 = (iy1 * sw + ix ) * 4;
+          const i11 = (iy1 * sw + ix1) * 4;
           const w00 = (1 - fx) * (1 - fy);
           const w10 = fx * (1 - fy);
           const w01 = (1 - fx) * fy;
@@ -566,20 +581,22 @@
         }
       }
     } else {
-      for (let y = 0; y < h; y++) {
+      for (let y = 0; y < outH; y++) {
         const dy = y - cy;
         const dy2 = dy * dy;
-        const rowOut = y * w * 4;
-        for (let x = 0; x < w; x++) {
+        const rowOut = y * outW * 4;
+        for (let x = 0; x < outW; x++) {
           const dx = x - cx;
           const d2 = dx * dx + dy2;
           const o = rowOut + x * 4;
           if (d2 < 0.5) {
             if (strength <= 0) {
-              const si = (y * w + x) * 4;
+              const sxi = (x * swScale) | 0;
+              const syi = (y * shScale) | 0;
+              const si = (syi * sw + sxi) * 4;
               dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
             } else if (edge) {
-              const si = (cyClamped * w + cxClamped) * 4;
+              const si = (cyClamped * sw + cxClamped) * 4;
               dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
             } else {
               dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
@@ -588,20 +605,20 @@
           }
           const k = r2 / d2;
           const mult = 1 + strength * (k - 1);
-          const sx = cx + dx * mult;
-          const sy = cy + dy * mult;
+          const sx = (cx + dx * mult) * swScale;
+          const sy = (cy + dy * mult) * shScale;
           let ix = sx | 0;
           let iy = sy | 0;
-          if (ix < 0 || iy < 0 || ix >= w || iy >= h) {
+          if (ix < 0 || iy < 0 || ix >= sw || iy >= sh) {
             if (edge) {
-              if (ix < 0) ix = 0; else if (ix > wMax) ix = wMax;
-              if (iy < 0) iy = 0; else if (iy > hMax) iy = hMax;
+              if (ix < 0) ix = 0; else if (ix > swMax) ix = swMax;
+              if (iy < 0) iy = 0; else if (iy > shMax) iy = shMax;
             } else {
               dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
               continue;
             }
           }
-          const si = (iy * w + ix) * 4;
+          const si = (iy * sw + ix) * 4;
           dst[o]   = srcData[si];
           dst[o+1] = srcData[si+1];
           dst[o+2] = srcData[si+2];
@@ -909,6 +926,10 @@
   let pendingRender = false;
   let renderToken = 0;
   let exportResolver = null;
+  let hiResTimer = 0;
+  let hiResInFlight = false;
+  const HIRES_MAX = 2400;
+  const HIRES_DELAY = 300;
 
   function fitDimensions(w, h) {
     const m = Math.max(w, h);
@@ -935,6 +956,8 @@
           pendingRender = false;
           sendRender();
         }
+      } else if (msg.type === 'renderedHiRes') {
+        hiResInFlight = false;
       } else if (msg.type === 'exported') {
         if (exportResolver) {
           exportResolver({ blob: msg.blob, ext: msg.ext });
@@ -982,6 +1005,38 @@
     workerBusy = true;
     renderToken++;
     worker.postMessage({ type: 'render', token: renderToken, params: currentParams() });
+  }
+
+  function scheduleHiResRender() {
+    if (hiResTimer) clearTimeout(hiResTimer);
+    hiResTimer = 0;
+    if (!worker || !state.previewData) return;
+    if (!view || view.scale <= 1.05) return;
+    hiResTimer = setTimeout(triggerHiResRender, HIRES_DELAY);
+  }
+
+  function triggerHiResRender() {
+    hiResTimer = 0;
+    if (!worker || !state.previewData) return;
+    if (!view || view.scale <= 1.05) return;
+    if (workerBusy || hiResInFlight) {
+      hiResTimer = setTimeout(triggerHiResRender, 100);
+      return;
+    }
+    const longest = Math.max(state.fullW, state.fullH);
+    let hiW = state.fullW, hiH = state.fullH;
+    if (longest > HIRES_MAX) {
+      const s = HIRES_MAX / longest;
+      hiW = Math.round(state.fullW * s);
+      hiH = Math.round(state.fullH * s);
+    }
+    if (hiW <= state.previewW) return;
+    const sxScale = hiW / state.previewW;
+    const syScale = hiH / state.previewH;
+    const p = currentParams();
+    const params = { ...p, cx: p.cx * sxScale, cy: p.cy * syScale, r: p.r * sxScale };
+    hiResInFlight = true;
+    worker.postMessage({ type: 'renderHiRes', params, bitmapW: hiW, bitmapH: hiH });
   }
 
   function loadImage(file, opts) {
@@ -1198,6 +1253,7 @@
     if (worker) sendRender();
     else renderSyncFallback();
     scheduleHashWrite();
+    scheduleHiResRender();
   }
 
   function drawGridOverlay() {
@@ -1602,6 +1658,7 @@
     rightOverlay.style.transform = t;
     if (zoomLabel) zoomLabel.textContent = `${Math.round(view.scale * 100)}%`;
     scheduleHashWrite();
+    scheduleHiResRender();
   }
 
   function zoomAt(x, y, factor) {
