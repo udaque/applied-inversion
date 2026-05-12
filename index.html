@@ -447,32 +447,27 @@
 </main>
 
 <script id="worker-src" type="javascript/worker">
-  let offscreen = null;
-  let ctx = null;
   let preview = null;
   let full = null;
 
   self.onmessage = async (e) => {
     const msg = e.data;
-    if (msg.type === 'init') {
-      offscreen = msg.canvas;
-      ctx = offscreen.getContext('2d');
-    } else if (msg.type === 'source') {
+    if (msg.type === 'source') {
       preview = msg.preview;
       full = msg.full || msg.preview;
-      offscreen.width = preview.w;
-      offscreen.height = preview.h;
     } else if (msg.type === 'render') {
-      if (offscreen.width !== preview.w) offscreen.width = preview.w;
-      if (offscreen.height !== preview.h) offscreen.height = preview.h;
-      renderTo(ctx, preview, msg.params);
-      self.postMessage({ type: 'rendered', token: msg.token });
+      const out = buildImageData(preview, msg.params, preview.w, preview.h);
+      self.postMessage(
+        { type: 'rendered', token: msg.token, buffer: out.data.buffer, w: preview.w, h: preview.h },
+        [out.data.buffer]
+      );
     } else if (msg.type === 'renderHiRes') {
       const bw = msg.bitmapW, bh = msg.bitmapH;
-      if (offscreen.width !== bw) offscreen.width = bw;
-      if (offscreen.height !== bh) offscreen.height = bh;
-      renderTo(ctx, full, msg.params, bw, bh);
-      self.postMessage({ type: 'renderedHiRes' });
+      const out = buildImageData(full, msg.params, bw, bh);
+      self.postMessage(
+        { type: 'renderedHiRes', buffer: out.data.buffer, w: bw, h: bh },
+        [out.data.buffer]
+      );
     } else if (msg.type === 'export') {
       const useFull = !!msg.useFull;
       const src = useFull ? full : preview;
@@ -486,7 +481,8 @@
       };
       const oc = new OffscreenCanvas(src.w, src.h);
       const fctx = oc.getContext('2d');
-      renderTo(fctx, src, params);
+      const id = buildImageData(src, params, src.w, src.h);
+      fctx.putImageData(id, 0, 0);
       let finalCanvas = oc;
       if (msg.format === 'image/jpeg') {
         const bg = new OffscreenCanvas(src.w, src.h);
@@ -501,7 +497,7 @@
     }
   };
 
-  function renderTo(targetCtx, src, params, outW, outH) {
+  function buildImageData(src, params, outW, outH) {
     outW = outW || src.w;
     outH = outH || src.h;
     const sw = src.w, sh = src.h;
@@ -626,7 +622,7 @@
         }
       }
     }
-    targetCtx.putImageData(out, 0, 0);
+    return out;
   }
 </script>
 
@@ -951,12 +947,14 @@
     worker.onmessage = (e) => {
       const msg = e.data;
       if (msg.type === 'rendered') {
+        paintWorkerResult(msg);
         workerBusy = false;
         if (pendingRender) {
           pendingRender = false;
           sendRender();
         }
       } else if (msg.type === 'renderedHiRes') {
+        paintWorkerResult(msg);
         hiResInFlight = false;
       } else if (msg.type === 'exported') {
         if (exportResolver) {
@@ -965,9 +963,17 @@
         }
       }
     };
-    const off = rightCanvas.transferControlToOffscreen();
-    worker.postMessage({ type: 'init', canvas: off }, [off]);
     workerReadyForSource = true;
+  }
+
+  function paintWorkerResult(msg) {
+    if (!msg || !msg.buffer) return;
+    const w = msg.w, h = msg.h;
+    if (rightCanvas.width !== w) rightCanvas.width = w;
+    if (rightCanvas.height !== h) rightCanvas.height = h;
+    const ctx = rightCanvas.getContext('2d');
+    const id = new ImageData(new Uint8ClampedArray(msg.buffer), w, h);
+    ctx.putImageData(id, 0, 0);
   }
 
   function parseFill() {
