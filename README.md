@@ -1,5 +1,7 @@
 # Applied Inversion
 
+🇺🇸 English README is available at [README.en.md](./README.en.md).
+
 브라우저에서 동작하는 이미지 **반전 변환(inversion)** 도구입니다. 사진을 업로드하고 반전원(중심·반지름)을 정하면, 그 원에 대한 평면 반전을 적용한 결과를 실시간으로 보여줍니다.
 
 > **반전(Inversion)** — 평면 위의 한 점 *O*와 반지름 *r*이 주어졌을 때, 점 *P* (≠ *O*)를 반직선 *OP* 위에 있고 *OP · OQ = r²* 을 만족하는 점 *Q*로 대응시키는 매핑.
