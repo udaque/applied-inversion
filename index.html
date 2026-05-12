@@ -157,7 +157,6 @@
     display: flex;
     gap: 12px;
     align-items: center;
-    margin-top: 12px;
   }
   .strength-row > label {
     font-size: 11px;
@@ -379,14 +378,14 @@
         <input type="number" id="rInput" min="1" step="1" value="100">
       </div>
     </div>
-    <div class="strength-row">
-      <label for="strengthInput" data-i18n="strength">강도</label>
-      <input type="range" id="strengthInput" min="0" max="100" step="1" value="100">
-      <span id="strengthValue">100%</span>
-    </div>
     <details id="advanced">
       <summary data-i18n="advanced">고급 옵션</summary>
       <div class="advanced-body">
+        <div class="strength-row">
+          <label for="strengthInput" data-i18n="strength">강도</label>
+          <input type="range" id="strengthInput" min="0" max="100" step="1" value="100">
+          <span id="strengthValue">100%</span>
+        </div>
         <div class="fill-row">
           <label for="fillMode" data-i18n="fillLabel">정보 없는 영역</label>
           <select id="fillMode">
