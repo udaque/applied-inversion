@@ -501,6 +501,48 @@
 
 <script>
 (() => {
+  try {
+    if ((!location.hash || location.hash === '#')) {
+      const saved = localStorage.getItem('hash');
+      if (saved) {
+        const h = saved.startsWith('#') ? saved : '#' + saved;
+        history.replaceState(null, '', h);
+      }
+    }
+  } catch {}
+
+  function openIDB() {
+    return new Promise((resolve, reject) => {
+      try {
+        const req = indexedDB.open('inversion-tool', 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      } catch (e) { reject(e); }
+    });
+  }
+  async function idbGet(key) {
+    const db = await openIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('kv', 'readonly');
+      const req = tx.objectStore('kv').get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbPut(key, value) {
+    const db = await openIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
   const fileInput = document.getElementById('fileInput');
   const saveBtn = document.getElementById('saveBtn');
   const formatSelect = document.getElementById('formatSelect');
@@ -642,6 +684,7 @@
     if (location.hash !== hash) {
       try { history.replaceState(null, '', hash); } catch {}
     }
+    try { localStorage.setItem('hash', hash); } catch {}
   }
 
   function applyHashToControls(p) {
@@ -787,11 +830,17 @@
     worker.postMessage({ type: 'render', token: renderToken, params: currentParams() });
   }
 
-  function loadImage(file) {
+  function loadImage(file, opts) {
+    opts = opts || {};
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
+      if (!opts.skipPersist) {
+        const name = (file && file.name) || 'image';
+        const type = (file && file.type) || 'image/png';
+        idbPut('lastImage', { blob: file, name, type }).catch(() => {});
+      }
       const fullW = img.naturalWidth;
       const fullH = img.naturalHeight;
       const fit = fitDimensions(fullW, fullH);
@@ -1458,6 +1507,15 @@
   initLang();
   initWorker();
   suppressHashWrite = false;
+
+  (async () => {
+    try {
+      const saved = await idbGet('lastImage');
+      if (saved && saved.blob && !state.previewData) {
+        loadImage(saved.blob, { skipPersist: true });
+      }
+    } catch {}
+  })();
 })();
 </script>
 </body>
