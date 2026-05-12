@@ -103,6 +103,31 @@
     touch-action: none;
   }
   #leftCanvas { cursor: crosshair; }
+  #rightCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: 0 0;
+    cursor: grab;
+  }
+  #rightCanvas.grabbing { cursor: grabbing; }
+  .view-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .view-controls button {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+  .view-controls .zoom-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 4px;
+  }
   .controls {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -274,8 +299,13 @@
       <div class="empty-msg" id="rightEmpty">결과가 여기에 표시됩니다</div>
       <canvas id="rightCanvas" style="display:none"></canvas>
     </div>
+    <div class="view-controls">
+      <button id="resetViewBtn" type="button">화면 맞춤</button>
+      <span class="zoom-label" id="zoomLabel">100%</span>
+    </div>
     <div class="hint">
-      반전(inversion): 중심 O, 반지름 r의 원에 대해 점 Q를 OP·OQ = r²을 만족하는 P로 매핑합니다.
+      반전(inversion): 중심 O, 반지름 r의 원에 대해 점 Q를 OP·OQ = r²을 만족하는 P로 매핑합니다.<br>
+      마우스 휠 또는 두 손가락 핀치로 확대/축소, 드래그로 이동, 더블클릭/더블탭으로 초기화.
     </div>
   </section>
 </main>
@@ -421,6 +451,9 @@
   const rightCanvas = document.getElementById('rightCanvas');
   const leftEmpty = document.getElementById('leftEmpty');
   const rightEmpty = document.getElementById('rightEmpty');
+  const rightWrap = document.getElementById('rightWrap');
+  const resetViewBtn = document.getElementById('resetViewBtn');
+  const zoomLabel = document.getElementById('zoomLabel');
   const cxInput = document.getElementById('cxInput');
   const cyInput = document.getElementById('cyInput');
   const rInput = document.getElementById('rInput');
@@ -576,6 +609,10 @@
       rightCanvas.style.display = 'block';
       leftEmpty.style.display = 'none';
       rightEmpty.style.display = 'none';
+
+      rightWrap.style.aspectRatio = `${previewW} / ${previewH}`;
+      rightWrap.style.minHeight = '0';
+      resetView();
 
       updateInputs();
       updateMeta();
@@ -925,6 +962,98 @@
       saveBtn.textContent = orig;
     }
   });
+
+  const view = { scale: 1, tx: 0, ty: 0 };
+  const MIN_SCALE = 0.2;
+  const MAX_SCALE = 40;
+  const rightPointers = new Map();
+  let lastPinch = null;
+
+  function applyView() {
+    rightCanvas.style.transform =
+      `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`;
+    if (zoomLabel) zoomLabel.textContent = `${Math.round(view.scale * 100)}%`;
+  }
+
+  function zoomAt(x, y, factor) {
+    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, view.scale * factor));
+    const k = newScale / view.scale;
+    view.tx = x - (x - view.tx) * k;
+    view.ty = y - (y - view.ty) * k;
+    view.scale = newScale;
+    applyView();
+  }
+
+  function resetView() {
+    view.scale = 1;
+    view.tx = 0;
+    view.ty = 0;
+    applyView();
+  }
+
+  resetViewBtn.addEventListener('click', resetView);
+
+  rightCanvas.addEventListener('wheel', (e) => {
+    if (!state.previewData) return;
+    e.preventDefault();
+    const rect = rightWrap.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const factor = Math.exp(-e.deltaY * 0.0015);
+    zoomAt(x, y, factor);
+  }, { passive: false });
+
+  rightCanvas.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    resetView();
+  });
+
+  rightCanvas.addEventListener('pointerdown', (e) => {
+    if (!state.previewData) return;
+    rightCanvas.setPointerCapture(e.pointerId);
+    rightPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (rightPointers.size === 2) {
+      const pts = [...rightPointers.values()];
+      lastPinch = {
+        midX: (pts[0].x + pts[1].x) / 2,
+        midY: (pts[0].y + pts[1].y) / 2,
+        dist: Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y),
+      };
+    }
+    rightCanvas.classList.add('grabbing');
+  });
+
+  rightCanvas.addEventListener('pointermove', (e) => {
+    if (!rightPointers.has(e.pointerId)) return;
+    const prev = rightPointers.get(e.pointerId);
+    rightPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (rightPointers.size === 1) {
+      view.tx += e.clientX - prev.x;
+      view.ty += e.clientY - prev.y;
+      applyView();
+    } else if (rightPointers.size === 2 && lastPinch) {
+      const pts = [...rightPointers.values()];
+      const midX = (pts[0].x + pts[1].x) / 2;
+      const midY = (pts[0].y + pts[1].y) / 2;
+      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      const rect = rightWrap.getBoundingClientRect();
+      view.tx += midX - lastPinch.midX;
+      view.ty += midY - lastPinch.midY;
+      zoomAt(midX - rect.left, midY - rect.top, dist / lastPinch.dist);
+      lastPinch = { midX, midY, dist };
+    }
+  });
+
+  function endRightPointer(e) {
+    if (rightPointers.has(e.pointerId)) {
+      rightPointers.delete(e.pointerId);
+      try { rightCanvas.releasePointerCapture(e.pointerId); } catch {}
+    }
+    if (rightPointers.size < 2) lastPinch = null;
+    if (rightPointers.size === 0) rightCanvas.classList.remove('grabbing');
+  }
+  rightCanvas.addEventListener('pointerup', endRightPointer);
+  rightCanvas.addEventListener('pointercancel', endRightPointer);
 
   initWorker();
 })();
