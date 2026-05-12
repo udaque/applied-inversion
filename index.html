@@ -969,11 +969,13 @@
   function paintWorkerResult(msg) {
     if (!msg || !msg.buffer) return;
     const w = msg.w, h = msg.h;
+    const before = `${rightCanvas.width}x${rightCanvas.height}`;
     if (rightCanvas.width !== w) rightCanvas.width = w;
     if (rightCanvas.height !== h) rightCanvas.height = h;
     const ctx = rightCanvas.getContext('2d');
     const id = new ImageData(new Uint8ClampedArray(msg.buffer), w, h);
     ctx.putImageData(id, 0, 0);
+    if (window.__hiDebug) console.log('[paint]', msg.type, before, '->', `${w}x${h}`);
   }
 
   function parseFill() {
