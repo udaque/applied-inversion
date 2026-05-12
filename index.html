@@ -803,7 +803,7 @@
 
     octx.clearRect(0, 0, w, h);
 
-    octx.strokeStyle = 'rgba(80,200,255,0.7)';
+    octx.strokeStyle = 'rgba(255,255,255,0.7)';
     octx.lineWidth = 1;
     octx.beginPath();
     for (let x = 0; x <= w + 0.5; x += s) {
@@ -858,7 +858,7 @@
       let s = parseFloat(gridSpacing.value);
       if (!isFinite(s) || s <= 1) s = Math.max(8, Math.min(w, h) / 12);
       lctx.save();
-      lctx.strokeStyle = 'rgba(80,200,255,0.7)';
+      lctx.strokeStyle = 'rgba(255,255,255,0.7)';
       lctx.lineWidth = 1;
       lctx.beginPath();
       for (let x = 0; x <= w + 0.5; x += s) {
@@ -876,7 +876,7 @@
     lctx.save();
     lctx.setLineDash([6, 6]);
     lctx.lineWidth = 2;
-    lctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    lctx.strokeStyle = 'rgba(80,200,255,0.95)';
     lctx.beginPath();
     lctx.arc(state.cx, state.cy, state.r, 0, Math.PI * 2);
     lctx.stroke();
