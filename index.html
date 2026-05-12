@@ -310,6 +310,16 @@
     color: var(--muted);
     cursor: pointer;
   }
+  body.dragging-file::after {
+    content: '';
+    position: fixed;
+    inset: 8px;
+    border-radius: 12px;
+    border: 3px dashed var(--accent);
+    background: rgba(74,163,255,0.06);
+    pointer-events: none;
+    z-index: 9000;
+  }
   .toast {
     position: fixed;
     bottom: 24px;
@@ -733,6 +743,7 @@
       toastShareFailed: '공유에 실패했어요.',
       toastNoImage: '먼저 이미지를 업로드해 주세요.',
       toastInstagramDesktop: '이미지를 다운로드했어요. Instagram에서 업로드하세요.',
+      toastNotAnImage: '이미지 파일이 아닙니다.',
     },
     en: {
       title: 'Image Inversion',
@@ -778,6 +789,7 @@
       toastShareFailed: 'Share failed.',
       toastNoImage: 'Upload an image first.',
       toastInstagramDesktop: 'Image downloaded. Upload it on Instagram.',
+      toastNotAnImage: 'That is not an image file.',
     },
   };
 
@@ -1553,6 +1565,65 @@
   });
 
   leftEmpty.addEventListener('click', () => fileInput.click());
+
+  function pickImageFile(items) {
+    if (!items) return null;
+    for (const it of items) {
+      const file = it.getAsFile ? it.getAsFile() : it;
+      if (file && file.type && file.type.startsWith('image/')) return file;
+    }
+    return null;
+  }
+
+  let dragDepth = 0;
+  function isFileDrag(e) {
+    if (!e.dataTransfer) return false;
+    const types = e.dataTransfer.types;
+    if (!types) return false;
+    for (let i = 0; i < types.length; i++) {
+      if (types[i] === 'Files') return true;
+    }
+    return false;
+  }
+
+  window.addEventListener('dragenter', (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    dragDepth++;
+    document.body.classList.add('dragging-file');
+  });
+  window.addEventListener('dragover', (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragleave', (e) => {
+    if (!isFileDrag(e)) return;
+    dragDepth--;
+    if (dragDepth <= 0) {
+      dragDepth = 0;
+      document.body.classList.remove('dragging-file');
+    }
+  });
+  window.addEventListener('drop', (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    document.body.classList.remove('dragging-file');
+    const file = pickImageFile(e.dataTransfer.files);
+    if (file) loadImage(file);
+    else showToast(T[currentLang].toastNotAnImage);
+  });
+
+  window.addEventListener('paste', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input, textarea')) return;
+    const file = pickImageFile(e.clipboardData && e.clipboardData.items);
+    if (file) {
+      e.preventDefault();
+      loadImage(file);
+    }
+  });
 
   async function exportImage(opts) {
     opts = opts || {};
