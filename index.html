@@ -1659,25 +1659,60 @@
     shareNativeBtn.style.display = 'none';
   }
 
+  function composeUrlFor(platform, dict) {
+    const text = dict.shareText(VERSION, getShareLink());
+    if (platform === 'bluesky') {
+      return `https://bsky.app/intent/compose?text=${encodeURIComponent(text)}`;
+    }
+    if (platform === 'x') {
+      const link = getShareLink();
+      const t = dict.shareTextShort(VERSION);
+      return `https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}&url=${encodeURIComponent(link)}`;
+    }
+    if (platform === 'threads') {
+      return `https://www.threads.net/intent/post?text=${encodeURIComponent(text)}`;
+    }
+    return null;
+  }
+
   async function handleShare(platform) {
     const dict = T[currentLang];
+
     if (platform === 'copy') {
       try {
         await navigator.clipboard.writeText(getShareLink());
         showToast(dict.toastLinkCopied);
-      } catch {
-        showToast(dict.toastShareFailed);
-      }
+      } catch { showToast(dict.toastShareFailed); }
       shareWrap.classList.remove('open');
       return;
     }
+
     if (!state.previewData) {
       showToast(dict.toastNoImage);
       return;
     }
+
+    if (platform === 'bluesky' || platform === 'x' || platform === 'threads') {
+      const url = composeUrlFor(platform, dict);
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      shareWrap.classList.remove('open');
+      (async () => {
+        const blob = await getShareBlob();
+        if (!blob) return;
+        const copied = await copyImageToClipboardSafe(blob);
+        if (copied) {
+          showToast(dict.toastImageCopied);
+        } else {
+          downloadBlob(blob, 'inversion.png');
+          showToast(dict.toastImageDownloaded);
+        }
+      })();
+      return;
+    }
+
+    const text = dict.shareText(VERSION, getShareLink());
     const blob = await getShareBlob();
     const file = blob ? new File([blob], 'inversion.png', { type: 'image/png' }) : null;
-    const text = dict.shareText(VERSION, getShareLink());
 
     if (platform === 'native' || platform === 'instagram') {
       if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1703,29 +1738,7 @@
         } catch { showToast(dict.toastShareFailed); }
       }
       shareWrap.classList.remove('open');
-      return;
     }
-
-    const copied = await copyImageToClipboardSafe(blob);
-    let url = null;
-    if (platform === 'bluesky') {
-      url = `https://bsky.app/intent/compose?text=${encodeURIComponent(text)}`;
-    } else if (platform === 'x') {
-      const link = getShareLink();
-      const t = dict.shareTextShort(VERSION);
-      url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}&url=${encodeURIComponent(link)}`;
-    } else if (platform === 'threads') {
-      url = `https://www.threads.net/intent/post?text=${encodeURIComponent(text)}`;
-    }
-    if (url) window.open(url, '_blank', 'noopener,noreferrer');
-
-    if (copied) {
-      showToast(dict.toastImageCopied);
-    } else if (blob) {
-      downloadBlob(blob, 'inversion.png');
-      showToast(dict.toastImageDownloaded);
-    }
-    shareWrap.classList.remove('open');
   }
 
   document.querySelectorAll('[data-share]').forEach((btn) => {
