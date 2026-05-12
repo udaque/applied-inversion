@@ -271,6 +271,7 @@
         <option value="white">흰색</option>
         <option value="custom">사용자 색</option>
         <option value="transparent">투명</option>
+        <option value="edge">가장자리 확장</option>
       </select>
       <input type="color" id="fillColor" value="#000000">
     </div>
@@ -362,13 +363,16 @@
     const srcData = src.data;
     const out = new ImageData(w, h);
     const dst = out.data;
-    const { cx, cy, r, fill, mode } = params;
+    const { cx, cy, r, fill, mode, outside } = params;
     const r2 = r * r;
     const fr = fill[0], fg = fill[1], fb = fill[2], fa = fill[3];
+    const edge = outside === 'edge';
+    const wMax = w - 1;
+    const hMax = h - 1;
+    const cxClamped = cx < 0 ? 0 : (cx > wMax ? wMax : cx | 0);
+    const cyClamped = cy < 0 ? 0 : (cy > hMax ? hMax : cy | 0);
 
     if (mode === 'bilinear') {
-      const wMax = w - 1;
-      const hMax = h - 1;
       for (let y = 0; y < h; y++) {
         const dy = y - cy;
         const dy2 = dy * dy;
@@ -378,14 +382,27 @@
           const d2 = dx * dx + dy2;
           const o = rowOut + x * 4;
           if (d2 < 0.5) {
-            dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
+            if (edge) {
+              const si = (cyClamped * w + cxClamped) * 4;
+              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
+            } else {
+              dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
+            }
             continue;
           }
           const k = r2 / d2;
-          const sx = cx + dx * k;
-          const sy = cy + dy * k;
+          let sx = cx + dx * k;
+          let sy = cy + dy * k;
           if (sx < 0 || sy < 0 || sx > wMax || sy > hMax) {
-            dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
+            if (edge) {
+              if (sx < 0) sx = 0; else if (sx > wMax) sx = wMax;
+              if (sy < 0) sy = 0; else if (sy > hMax) sy = hMax;
+              const ix = sx | 0, iy = sy | 0;
+              const si = (iy * w + ix) * 4;
+              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
+            } else {
+              dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
+            }
             continue;
           }
           const ix = sx | 0;
@@ -418,17 +435,27 @@
           const d2 = dx * dx + dy2;
           const o = rowOut + x * 4;
           if (d2 < 0.5) {
-            dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
+            if (edge) {
+              const si = (cyClamped * w + cxClamped) * 4;
+              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
+            } else {
+              dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
+            }
             continue;
           }
           const k = r2 / d2;
           const sx = cx + dx * k;
           const sy = cy + dy * k;
-          const ix = sx | 0;
-          const iy = sy | 0;
+          let ix = sx | 0;
+          let iy = sy | 0;
           if (ix < 0 || iy < 0 || ix >= w || iy >= h) {
-            dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
-            continue;
+            if (edge) {
+              if (ix < 0) ix = 0; else if (ix > wMax) ix = wMax;
+              if (iy < 0) iy = 0; else if (iy > hMax) iy = hMax;
+            } else {
+              dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
+              continue;
+            }
           }
           const si = (iy * w + ix) * 4;
           dst[o]   = srcData[si];
@@ -550,6 +577,7 @@
       r: state.r,
       fill: parseFill(),
       mode: getSamplingMode(),
+      outside: fillMode.value === 'edge' ? 'edge' : 'fill',
     };
   }
 
@@ -650,19 +678,36 @@
     const src = state.previewData.data;
     const out = rctx.createImageData(w, h);
     const dst = out.data;
-    const { cx, cy, r, fill, mode } = currentParams();
+    const { cx, cy, r, fill, mode, outside } = currentParams();
     const r2 = r * r;
     const [fr, fg, fb, fa] = fill;
+    const edge = outside === 'edge';
+    const wMax = w - 1, hMax = h - 1;
+    const cxC = cx < 0 ? 0 : (cx > wMax ? wMax : cx | 0);
+    const cyC = cy < 0 ? 0 : (cy > hMax ? hMax : cy | 0);
     if (mode === 'bilinear') {
-      const wMax = w - 1, hMax = h - 1;
       for (let y = 0; y < h; y++) {
         const dy = y - cy, dy2 = dy * dy, rowOut = y * w * 4;
         for (let x = 0; x < w; x++) {
           const dx = x - cx, d2 = dx*dx + dy2, o = rowOut + x*4;
-          if (d2 < 0.5) { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue; }
-          const k = r2/d2, sx = cx + dx*k, sy = cy + dy*k;
+          if (d2 < 0.5) {
+            if (edge) {
+              const si = (cyC*w + cxC)*4;
+              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
+            } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
+            continue;
+          }
+          const k = r2/d2;
+          let sx = cx + dx*k, sy = cy + dy*k;
           if (sx < 0 || sy < 0 || sx > wMax || sy > hMax) {
-            dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue;
+            if (edge) {
+              if (sx < 0) sx = 0; else if (sx > wMax) sx = wMax;
+              if (sy < 0) sy = 0; else if (sy > hMax) sy = hMax;
+              const ix = sx|0, iy = sy|0;
+              const si = (iy*w + ix)*4;
+              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
+            } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
+            continue;
           }
           const ix=sx|0, iy=sy|0, fx=sx-ix, fy=sy-iy;
           const ix1 = ix < wMax ? ix+1 : ix;
@@ -680,11 +725,22 @@
         const dy = y - cy, dy2 = dy*dy, rowOut = y*w*4;
         for (let x = 0; x < w; x++) {
           const dx = x - cx, d2 = dx*dx + dy2, o = rowOut + x*4;
-          if (d2 < 0.5) { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue; }
+          if (d2 < 0.5) {
+            if (edge) {
+              const si = (cyC*w + cxC)*4;
+              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
+            } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
+            continue;
+          }
           const k = r2/d2, sx = cx + dx*k, sy = cy + dy*k;
-          const ix = sx|0, iy = sy|0;
+          let ix = sx|0, iy = sy|0;
           if (ix < 0 || iy < 0 || ix >= w || iy >= h) {
-            dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue;
+            if (edge) {
+              if (ix < 0) ix = 0; else if (ix > wMax) ix = wMax;
+              if (iy < 0) iy = 0; else if (iy > hMax) iy = hMax;
+            } else {
+              dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue;
+            }
           }
           const si = (iy*w + ix)*4;
           dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
@@ -846,7 +902,16 @@
     }
   });
 
-  fillMode.addEventListener('change', requestRender);
+  function syncFillColorEnabled() {
+    const on = fillMode.value === 'custom';
+    fillColor.disabled = !on;
+    fillColor.style.opacity = on ? '1' : '0.4';
+  }
+  syncFillColorEnabled();
+  fillMode.addEventListener('change', () => {
+    syncFillColorEnabled();
+    requestRender();
+  });
   fillColor.addEventListener('input', () => {
     if (fillMode.value === 'custom') requestRender();
   });
@@ -891,16 +956,28 @@
       const r2 = r * r;
       const [fr, fg, fb, fa] = parseFill();
       const mode = getSamplingMode();
+      const edge = fillMode.value === 'edge';
+      const wMax = w - 1, hMax = h - 1;
+      const cxC = cx < 0 ? 0 : (cx > wMax ? wMax : cx | 0);
+      const cyC = cy < 0 ? 0 : (cy > hMax ? hMax : cy | 0);
       for (let y = 0; y < h; y++) {
         const dy = y - cy, dy2 = dy*dy, rowOut = y*w*4;
         for (let x = 0; x < w; x++) {
           const dx = x - cx, d2 = dx*dx + dy2, o = rowOut + x*4;
-          if (d2 < 0.5) { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue; }
-          const k = r2/d2, sxp = cx + dx*k, syp = cy + dy*k;
-          if (mode === 'bilinear' && sxp >= 0 && syp >= 0 && sxp <= w-1 && syp <= h-1) {
+          if (d2 < 0.5) {
+            if (edge) {
+              const si = (cyC*w + cxC)*4;
+              dst[o]=srcArr[si]; dst[o+1]=srcArr[si+1]; dst[o+2]=srcArr[si+2]; dst[o+3]=srcArr[si+3];
+            } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
+            continue;
+          }
+          const k = r2/d2;
+          let sxp = cx + dx*k, syp = cy + dy*k;
+          const inBounds = sxp >= 0 && syp >= 0 && sxp <= wMax && syp <= hMax;
+          if (mode === 'bilinear' && inBounds) {
             const ix=sxp|0, iy=syp|0, fxp=sxp-ix, fyp=syp-iy;
-            const ix1 = ix < w-1 ? ix+1 : ix;
-            const iy1 = iy < h-1 ? iy+1 : iy;
+            const ix1 = ix < wMax ? ix+1 : ix;
+            const iy1 = iy < hMax ? iy+1 : iy;
             const i00=(iy*w+ix)*4, i10=(iy*w+ix1)*4, i01=(iy1*w+ix)*4, i11=(iy1*w+ix1)*4;
             const w00=(1-fxp)*(1-fyp), w10=fxp*(1-fyp), w01=(1-fxp)*fyp, w11=fxp*fyp;
             dst[o]   = srcArr[i00]*w00 + srcArr[i10]*w10 + srcArr[i01]*w01 + srcArr[i11]*w11;
@@ -908,9 +985,14 @@
             dst[o+2] = srcArr[i00+2]*w00 + srcArr[i10+2]*w10 + srcArr[i01+2]*w01 + srcArr[i11+2]*w11;
             dst[o+3] = srcArr[i00+3]*w00 + srcArr[i10+3]*w10 + srcArr[i01+3]*w01 + srcArr[i11+3]*w11;
           } else {
-            const ix = sxp|0, iy = syp|0;
+            let ix = sxp|0, iy = syp|0;
             if (ix < 0 || iy < 0 || ix >= w || iy >= h) {
-              dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue;
+              if (edge) {
+                if (ix < 0) ix = 0; else if (ix > wMax) ix = wMax;
+                if (iy < 0) iy = 0; else if (iy > hMax) iy = hMax;
+              } else {
+                dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue;
+              }
             }
             const si = (iy*w+ix)*4;
             dst[o]=srcArr[si]; dst[o+1]=srcArr[si+1]; dst[o+2]=srcArr[si+2]; dst[o+3]=srcArr[si+3];
