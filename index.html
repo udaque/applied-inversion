@@ -969,13 +969,11 @@
   function paintWorkerResult(msg) {
     if (!msg || !msg.buffer) return;
     const w = msg.w, h = msg.h;
-    const before = `${rightCanvas.width}x${rightCanvas.height}`;
     if (rightCanvas.width !== w) rightCanvas.width = w;
     if (rightCanvas.height !== h) rightCanvas.height = h;
     const ctx = rightCanvas.getContext('2d');
     const id = new ImageData(new Uint8ClampedArray(msg.buffer), w, h);
     ctx.putImageData(id, 0, 0);
-    if (window.__hiDebug) console.log('[paint]', msg.type, before, '->', `${w}x${h}`);
   }
 
   function parseFill() {
@@ -1018,27 +1016,16 @@
   function scheduleHiResRender() {
     if (hiResTimer) clearTimeout(hiResTimer);
     hiResTimer = 0;
-    if (!worker || !state.previewData) {
-      if (window.__hiDebug) console.log('[hires] schedule skip: no worker/preview');
-      return;
-    }
-    if (!view || view.scale <= 1.05) {
-      if (window.__hiDebug) console.log('[hires] schedule skip: scale', view && view.scale);
-      return;
-    }
-    if (window.__hiDebug) console.log('[hires] schedule at scale', view.scale);
+    if (!worker || !state.previewData) return;
+    if (!view || view.scale <= 1.05) return;
     hiResTimer = setTimeout(triggerHiResRender, HIRES_DELAY);
   }
 
   function triggerHiResRender() {
     hiResTimer = 0;
     if (!worker || !state.previewData) return;
-    if (!view || view.scale <= 1.05) {
-      if (window.__hiDebug) console.log('[hires] trigger skip: scale', view && view.scale);
-      return;
-    }
+    if (!view || view.scale <= 1.05) return;
     if (workerBusy || hiResInFlight) {
-      if (window.__hiDebug) console.log('[hires] trigger retry: busy=', workerBusy, 'inFlight=', hiResInFlight);
       hiResTimer = setTimeout(triggerHiResRender, 100);
       return;
     }
@@ -1052,16 +1039,12 @@
       hiW = Math.round(hiW * s);
       hiH = Math.round(hiH * s);
     }
-    if (hiW <= state.previewW * 1.1 || hiH <= state.previewH * 1.1) {
-      if (window.__hiDebug) console.log('[hires] trigger skip: no quality gain', { hiW, previewW: state.previewW });
-      return;
-    }
+    if (hiW <= state.previewW * 1.1 || hiH <= state.previewH * 1.1) return;
     const sxScale = hiW / state.previewW;
     const syScale = hiH / state.previewH;
     const p = currentParams();
     const params = { ...p, cx: p.cx * sxScale, cy: p.cy * syScale, r: p.r * sxScale };
     hiResInFlight = true;
-    if (window.__hiDebug) console.log('[hires] send', { hiW, hiH, scale: view.scale });
     worker.postMessage({ type: 'renderHiRes', params, bitmapW: hiW, bitmapH: hiH });
   }
 
