@@ -113,6 +113,15 @@
     cursor: grab;
   }
   #rightCanvas.grabbing { cursor: grabbing; }
+  #rightOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: 0 0;
+    pointer-events: none;
+  }
   .view-controls {
     display: flex;
     gap: 8px;
@@ -286,6 +295,13 @@
         <div class="check-row">
           <label><input type="checkbox" id="saveFullRes" checked> 원본 해상도로 저장</label>
         </div>
+        <div class="check-row">
+          <label><input type="checkbox" id="gridOverlay"> 그리드 / 축 오버레이</label>
+          <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px;">
+            <span style="font-size:12px; color:var(--muted)">간격(px)</span>
+            <input type="number" id="gridSpacing" min="2" step="1" style="width:70px; background:#0a0d11; border:1px solid var(--border); color:var(--text); padding:4px 6px; border-radius:5px; font-size:13px;">
+          </label>
+        </div>
       </div>
     </details>
     <div class="meta" id="meta"></div>
@@ -299,6 +315,7 @@
     <div class="canvas-wrap" id="rightWrap">
       <div class="empty-msg" id="rightEmpty">결과가 여기에 표시됩니다</div>
       <canvas id="rightCanvas" style="display:none"></canvas>
+      <canvas id="rightOverlay" style="display:none"></canvas>
     </div>
     <div class="view-controls">
       <button id="resetViewBtn" type="button">화면 맞춤</button>
@@ -479,8 +496,12 @@
   const leftEmpty = document.getElementById('leftEmpty');
   const rightEmpty = document.getElementById('rightEmpty');
   const rightWrap = document.getElementById('rightWrap');
+  const rightOverlay = document.getElementById('rightOverlay');
   const resetViewBtn = document.getElementById('resetViewBtn');
   const zoomLabel = document.getElementById('zoomLabel');
+  const gridOverlay = document.getElementById('gridOverlay');
+  const gridSpacing = document.getElementById('gridSpacing');
+  const octx = rightOverlay.getContext('2d');
   const cxInput = document.getElementById('cxInput');
   const cyInput = document.getElementById('cyInput');
   const rInput = document.getElementById('rInput');
@@ -632,6 +653,11 @@
 
       leftCanvas.width = previewW;
       leftCanvas.height = previewH;
+      rightOverlay.width = previewW;
+      rightOverlay.height = previewH;
+      if (!gridSpacing.value) {
+        gridSpacing.value = Math.max(8, Math.round(Math.min(previewW, previewH) / 12));
+      }
 
       leftCanvas.style.display = 'block';
       rightCanvas.style.display = 'block';
@@ -645,6 +671,7 @@
       updateInputs();
       updateMeta();
       drawOverlay();
+      drawGridOverlay();
 
       if (worker && workerReadyForSource) {
         const previewBuf = previewData.data;
@@ -753,8 +780,62 @@
   function requestRender() {
     if (!state.previewData) return;
     drawOverlay();
+    drawGridOverlay();
     if (worker) sendRender();
     else renderSyncFallback();
+  }
+
+  function drawGridOverlay() {
+    if (!state.previewData) return;
+    if (!gridOverlay.checked) {
+      rightOverlay.style.display = 'none';
+      return;
+    }
+    rightOverlay.style.display = 'block';
+    const w = state.previewW;
+    const h = state.previewH;
+    const cx = state.cx;
+    const cy = state.cy;
+    const r = state.r;
+    const r2 = r * r;
+    let s = parseFloat(gridSpacing.value);
+    if (!isFinite(s) || s <= 1) s = Math.max(8, Math.min(w, h) / 12);
+
+    octx.clearRect(0, 0, w, h);
+
+    const maxDist = Math.max(cx, cy, w - cx, h - cy) * 1.5;
+    const N = Math.min(200, Math.ceil(maxDist / s));
+
+    octx.lineWidth = 1;
+    octx.strokeStyle = 'rgba(255,255,255,0.35)';
+    octx.beginPath();
+    for (let k = -N; k <= N; k++) {
+      if (k === 0) continue;
+      const d = k * s;
+      const rc = r2 / (2 * Math.abs(d));
+      const cyh = cy + r2 / (2 * d);
+      octx.moveTo(cx + rc, cyh);
+      octx.arc(cx, cyh, rc, 0, Math.PI * 2);
+      const cxv = cx + r2 / (2 * d);
+      octx.moveTo(cxv + rc, cy);
+      octx.arc(cxv, cy, rc, 0, Math.PI * 2);
+    }
+    octx.stroke();
+
+    octx.strokeStyle = 'rgba(255,225,90,0.75)';
+    octx.lineWidth = 1.25;
+    octx.beginPath();
+    octx.moveTo(0, cy); octx.lineTo(w, cy);
+    octx.moveTo(cx, 0); octx.lineTo(cx, h);
+    octx.stroke();
+
+    octx.strokeStyle = 'rgba(80,200,255,0.8)';
+    octx.lineWidth = 1.25;
+    octx.setLineDash([4, 4]);
+    octx.beginPath();
+    octx.arc(cx, cy, r, 0, Math.PI * 2);
+    octx.stroke();
+    octx.setLineDash([]);
   }
 
   function updateInputs() {
@@ -919,6 +1000,11 @@
     el.addEventListener('change', requestRender);
   });
 
+  gridOverlay.addEventListener('change', drawGridOverlay);
+  gridSpacing.addEventListener('input', () => {
+    if (gridOverlay.checked) drawGridOverlay();
+  });
+
   fileInput.addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
     if (f) loadImage(f);
@@ -1052,8 +1138,9 @@
   let lastPinch = null;
 
   function applyView() {
-    rightCanvas.style.transform =
-      `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`;
+    const t = `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`;
+    rightCanvas.style.transform = t;
+    rightOverlay.style.transform = t;
     if (zoomLabel) zoomLabel.textContent = `${Math.round(view.scale * 100)}%`;
   }
 
