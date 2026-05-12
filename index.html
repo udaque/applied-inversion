@@ -331,7 +331,7 @@
 </head>
 <body>
 <header>
-  <h1>Image Inversion</h1>
+  <h1 id="appTitle">Applied Inversion</h1>
   <div class="toolbar">
     <select id="langSelect" title="Language">
       <option value="ko">한국어</option>
@@ -1883,7 +1883,8 @@
   rightCanvas.addEventListener('pointerup', endRightPointer);
   rightCanvas.addEventListener('pointercancel', endRightPointer);
 
-  const VERSION = '0.1';
+  const VERSION = '0.2';
+  document.getElementById('appTitle').textContent = `Applied Inversion v${VERSION}`;
   const shareWrap = document.getElementById('shareWrap');
   const shareBtn = document.getElementById('shareBtn');
   const shareNativeBtn = document.getElementById('shareNativeBtn');
