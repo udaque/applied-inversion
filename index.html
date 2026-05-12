@@ -145,6 +145,39 @@
     color: var(--muted);
     margin-left: 4px;
   }
+  .circles-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  .circles-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .circle-list {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .circle-list button {
+    padding: 4px 9px;
+    min-width: 28px;
+    font-size: 12px;
+  }
+  .circle-list button.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .circles-row > button {
+    padding: 4px 9px;
+    min-width: 28px;
+    font-size: 13px;
+  }
   .controls {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -384,6 +417,12 @@
       <div class="empty-msg" id="leftEmpty" data-i18n="uploadPrompt">이미지를 업로드해 주세요</div>
       <canvas id="leftCanvas" style="display:none"></canvas>
     </div>
+    <div class="circles-row">
+      <span class="circles-label" data-i18n="circlesLabel">반전원</span>
+      <div class="circle-list" id="circleList"></div>
+      <button id="addCircleBtn" type="button" data-i18n-title="addCircle">＋</button>
+      <button id="removeCircleBtn" type="button" data-i18n-title="removeCircle" disabled>−</button>
+    </div>
     <div class="controls">
       <div class="control">
         <label for="cxInput" data-i18n="cx">중심 X (%)</label>
@@ -485,12 +524,10 @@
       const src = useFull ? full : preview;
       const sx = src.w / preview.w;
       const sy = src.h / preview.h;
-      const params = {
-        ...msg.params,
-        cx: msg.params.cx * sx,
-        cy: msg.params.cy * sy,
-        r: msg.params.r * sx,
-      };
+      const scaled = (msg.params.circles || []).map((c) => ({
+        cx: c.cx * sx, cy: c.cy * sy, r: c.r * sx,
+      }));
+      const params = { ...msg.params, circles: scaled };
       const oc = new OffscreenCanvas(src.w, src.h);
       const fctx = oc.getContext('2d');
       const id = buildImageData(src, params, src.w, src.h);
@@ -519,55 +556,68 @@
     const srcData = src.data;
     const out = new ImageData(outW, outH);
     const dst = out.data;
-    const { cx, cy, r, fill, mode, outside } = params;
+    const { circles, fill, mode, outside } = params;
     const strength = typeof params.strength === 'number' ? params.strength : 1;
-    const r2 = r * r;
     const fr = fill[0], fg = fill[1], fb = fill[2], fa = fill[3];
     const edge = outside === 'edge';
-    const cxSrc = cx * swScale;
-    const cySrc = cy * shScale;
-    const cxClamped = cxSrc < 0 ? 0 : (cxSrc > swMax ? swMax : cxSrc | 0);
-    const cyClamped = cySrc < 0 ? 0 : (cySrc > shMax ? shMax : cySrc | 0);
+    const bilinear = mode === 'bilinear';
 
-    if (mode === 'bilinear') {
-      for (let y = 0; y < outH; y++) {
-        const dy = y - cy;
-        const dy2 = dy * dy;
-        const rowOut = y * outW * 4;
-        for (let x = 0; x < outW; x++) {
-          const dx = x - cx;
-          const d2 = dx * dx + dy2;
-          const o = rowOut + x * 4;
-          if (d2 < 0.5) {
-            if (strength <= 0) {
-              const sxi = (x * swScale) | 0;
-              const syi = (y * shScale) | 0;
-              const si = (syi * sw + sxi) * 4;
-              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
-            } else if (edge) {
-              const si = (cyClamped * sw + cxClamped) * 4;
-              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
-            } else {
-              dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
-            }
+    const cn = circles.length;
+    const ccx = new Float64Array(cn);
+    const ccy = new Float64Array(cn);
+    const cr2 = new Float64Array(cn);
+    for (let i = 0; i < cn; i++) {
+      ccx[i] = circles[i].cx;
+      ccy[i] = circles[i].cy;
+      cr2[i] = circles[i].r * circles[i].r;
+    }
+
+    for (let y = 0; y < outH; y++) {
+      const rowOut = y * outW * 4;
+      for (let x = 0; x < outW; x++) {
+        const o = rowOut + x * 4;
+        // Apply inversions in reverse order (T^{-1} = sigma_1 . sigma_2 ... . sigma_N)
+        let qx = x, qy = y;
+        let valid = true;
+        if (strength > 0 && cn > 0) {
+          for (let i = cn - 1; i >= 0; i--) {
+            const dx = qx - ccx[i];
+            const dy = qy - ccy[i];
+            const d2 = dx * dx + dy * dy;
+            if (d2 < 0.5) { valid = false; break; }
+            const k = cr2[i] / d2;
+            qx = ccx[i] + dx * k;
+            qy = ccy[i] + dy * k;
+          }
+        }
+        let sx, sy;
+        if (!valid) {
+          if (edge) {
+            sx = x * swScale;
+            sy = y * shScale;
+            if (sx < 0) sx = 0; else if (sx > swMax) sx = swMax;
+            if (sy < 0) sy = 0; else if (sy > shMax) sy = shMax;
+          } else {
+            dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
             continue;
           }
-          const k = r2 / d2;
-          const mult = 1 + strength * (k - 1);
-          let sx = (cx + dx * mult) * swScale;
-          let sy = (cy + dy * mult) * shScale;
+        } else {
+          // Blend composed source coord with output coord by strength
+          const bx = (1 - strength) * x + strength * qx;
+          const by = (1 - strength) * y + strength * qy;
+          sx = bx * swScale;
+          sy = by * shScale;
           if (sx < 0 || sy < 0 || sx > swMax || sy > shMax) {
             if (edge) {
               if (sx < 0) sx = 0; else if (sx > swMax) sx = swMax;
               if (sy < 0) sy = 0; else if (sy > shMax) sy = shMax;
-              const ix = sx | 0, iy = sy | 0;
-              const si = (iy * sw + ix) * 4;
-              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
             } else {
               dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
+              continue;
             }
-            continue;
           }
+        }
+        if (bilinear) {
           const ix = sx | 0;
           const iy = sy | 0;
           const fx = sx - ix;
@@ -586,46 +636,8 @@
           dst[o+1] = srcData[i00+1]*w00 + srcData[i10+1]*w10 + srcData[i01+1]*w01 + srcData[i11+1]*w11;
           dst[o+2] = srcData[i00+2]*w00 + srcData[i10+2]*w10 + srcData[i01+2]*w01 + srcData[i11+2]*w11;
           dst[o+3] = srcData[i00+3]*w00 + srcData[i10+3]*w10 + srcData[i01+3]*w01 + srcData[i11+3]*w11;
-        }
-      }
-    } else {
-      for (let y = 0; y < outH; y++) {
-        const dy = y - cy;
-        const dy2 = dy * dy;
-        const rowOut = y * outW * 4;
-        for (let x = 0; x < outW; x++) {
-          const dx = x - cx;
-          const d2 = dx * dx + dy2;
-          const o = rowOut + x * 4;
-          if (d2 < 0.5) {
-            if (strength <= 0) {
-              const sxi = (x * swScale) | 0;
-              const syi = (y * shScale) | 0;
-              const si = (syi * sw + sxi) * 4;
-              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
-            } else if (edge) {
-              const si = (cyClamped * sw + cxClamped) * 4;
-              dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
-            } else {
-              dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
-            }
-            continue;
-          }
-          const k = r2 / d2;
-          const mult = 1 + strength * (k - 1);
-          const sx = (cx + dx * mult) * swScale;
-          const sy = (cy + dy * mult) * shScale;
-          let ix = sx | 0;
-          let iy = sy | 0;
-          if (ix < 0 || iy < 0 || ix >= sw || iy >= sh) {
-            if (edge) {
-              if (ix < 0) ix = 0; else if (ix > swMax) ix = swMax;
-              if (iy < 0) iy = 0; else if (iy > shMax) iy = shMax;
-            } else {
-              dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa;
-              continue;
-            }
-          }
+        } else {
+          const ix = sx | 0, iy = sy | 0;
           const si = (iy * sw + ix) * 4;
           dst[o]   = srcData[si];
           dst[o+1] = srcData[si+1];
@@ -705,6 +717,9 @@
       saving: '저장 중…',
       undo: '실행 취소 (Ctrl/⌘ Z)',
       redo: '다시 실행 (Ctrl/⌘ ⇧ Z)',
+      circlesLabel: '반전원',
+      addCircle: '반전원 추가',
+      removeCircle: '활성 반전원 삭제',
       leftPanel: '원본 / 반전원',
       uploadPrompt: '이미지를 업로드해 주세요',
       cx: '중심 X (%)',
@@ -751,6 +766,9 @@
       saving: 'Saving…',
       undo: 'Undo (Ctrl/⌘ Z)',
       redo: 'Redo (Ctrl/⌘ ⇧ Z)',
+      circlesLabel: 'Circles',
+      addCircle: 'Add a circle',
+      removeCircle: 'Remove the active circle',
       leftPanel: 'Source / Inversion circle',
       uploadPrompt: 'Upload an image',
       cx: 'Center X (%)',
@@ -846,9 +864,13 @@
     }
     if (state && state.previewData) {
       const minD = Math.min(state.previewW, state.previewH);
-      params.set('cx', (state.cx / state.previewW * 100).toFixed(2));
-      params.set('cy', (state.cy / state.previewH * 100).toFixed(2));
-      params.set('rp', (state.r / minD * 100).toFixed(2));
+      const c = state.circles.map((cc) =>
+        (cc.cx / state.previewW * 100).toFixed(2) + ',' +
+        (cc.cy / state.previewH * 100).toFixed(2) + ',' +
+        (cc.r / minD * 100).toFixed(2)
+      ).join('_');
+      params.set('c', c);
+      if (state.activeIndex !== 0) params.set('ac', String(state.activeIndex));
       const gs = parseFloat(gridSpacing.value);
       if (isFinite(gs)) params.set('gs', (gs / minD * 100).toFixed(2));
       const rect = rightWrap.getBoundingClientRect();
@@ -863,6 +885,35 @@
       try { history.replaceState(null, '', hash); } catch {}
     }
     try { localStorage.setItem('hash', hash); } catch {}
+  }
+
+  function parseCirclesFromHash(p, previewW, previewH, minD) {
+    const c = p.get('c');
+    if (c) {
+      const parts = c.split('_');
+      const arr = [];
+      for (const part of parts) {
+        const [a, b, c2] = part.split(',').map(parseFloat);
+        if (!isFinite(a) || !isFinite(b) || !isFinite(c2) || c2 <= 0) continue;
+        arr.push({
+          cx: Math.max(0, Math.min(previewW, a / 100 * previewW)),
+          cy: Math.max(0, Math.min(previewH, b / 100 * previewH)),
+          r: Math.max(1, c2 / 100 * minD),
+        });
+      }
+      if (arr.length) return arr;
+    }
+    const cxp = parseFloat(p.get('cx'));
+    const cyp = parseFloat(p.get('cy'));
+    const rp = parseFloat(p.get('rp'));
+    if (isFinite(cxp) || isFinite(cyp) || isFinite(rp)) {
+      return [{
+        cx: isFinite(cxp) ? Math.max(0, Math.min(previewW, cxp / 100 * previewW)) : previewW / 2,
+        cy: isFinite(cyp) ? Math.max(0, Math.min(previewH, cyp / 100 * previewH)) : previewH / 2,
+        r: isFinite(rp) && rp > 0 ? Math.max(1, rp / 100 * minD) : minD * 0.3,
+      }];
+    }
+    return null;
   }
 
   function applyHashToControls(p) {
@@ -931,11 +982,16 @@
     fullH: 0,
     previewData: null,
     fullData: null,
-    cx: 0,
-    cy: 0,
-    r: 0,
+    circles: [{ cx: 0, cy: 0, r: 0 }],
+    activeIndex: 0,
     strength: 1,
     dragMode: null,
+    get cx() { return this.circles[this.activeIndex].cx; },
+    set cx(v) { this.circles[this.activeIndex].cx = v; },
+    get cy() { return this.circles[this.activeIndex].cy; },
+    set cy(v) { this.circles[this.activeIndex].cy = v; },
+    get r() { return this.circles[this.activeIndex].r; },
+    set r(v) { this.circles[this.activeIndex].r = v; },
   };
 
   let worker = null;
@@ -1014,9 +1070,7 @@
 
   function currentParams() {
     return {
-      cx: state.cx,
-      cy: state.cy,
-      r: state.r,
+      circles: state.circles.map((c) => ({ cx: c.cx, cy: c.cy, r: c.r })),
       strength: state.strength,
       fill: parseFill(),
       mode: getSamplingMode(),
@@ -1065,7 +1119,8 @@
     const sxScale = hiW / state.previewW;
     const syScale = hiH / state.previewH;
     const p = currentParams();
-    const params = { ...p, cx: p.cx * sxScale, cy: p.cy * syScale, r: p.r * sxScale };
+    const scaled = p.circles.map((c) => ({ cx: c.cx * sxScale, cy: c.cy * syScale, r: c.r * sxScale }));
+    const params = { ...p, circles: scaled };
     hiResInFlight = true;
     worker.postMessage({ type: 'renderHiRes', params, bitmapW: hiW, bitmapH: hiH });
   }
@@ -1111,17 +1166,17 @@
       state.previewData = previewData;
       state.fullData = fullData;
       const minD = Math.min(previewW, previewH);
-      state.cx = previewW / 2;
-      state.cy = previewH / 2;
-      state.r = minD * 0.3;
+      // Default: one circle in the center
+      state.circles = [{ cx: previewW / 2, cy: previewH / 2, r: minD * 0.3 }];
+      state.activeIndex = 0;
 
       const hashP = getHashParams();
-      const cxp = parseFloat(hashP.get('cx'));
-      const cyp = parseFloat(hashP.get('cy'));
-      const rp = parseFloat(hashP.get('rp'));
-      if (isFinite(cxp)) state.cx = Math.max(0, Math.min(previewW, cxp / 100 * previewW));
-      if (isFinite(cyp)) state.cy = Math.max(0, Math.min(previewH, cyp / 100 * previewH));
-      if (isFinite(rp) && rp > 0) state.r = Math.max(1, rp / 100 * minD);
+      const parsedCircles = parseCirclesFromHash(hashP, previewW, previewH, minD);
+      if (parsedCircles && parsedCircles.length) {
+        state.circles = parsedCircles;
+        const acIdx = parseInt(hashP.get('ac'), 10);
+        state.activeIndex = (isFinite(acIdx) && acIdx >= 0 && acIdx < parsedCircles.length) ? acIdx : 0;
+      }
 
       leftCanvas.width = previewW;
       leftCanvas.height = previewH;
@@ -1157,6 +1212,7 @@
       }
       suppressHashWrite = prevSuppress;
 
+      renderCircleList();
       updateInputs();
       updateMeta();
       drawOverlay();
@@ -1192,90 +1248,91 @@
     if (rightCanvas.width !== w) rightCanvas.width = w;
     if (rightCanvas.height !== h) rightCanvas.height = h;
     const rctx = rightCanvas.getContext('2d');
-    const src = state.previewData.data;
-    const out = rctx.createImageData(w, h);
+    const fakeSrc = { w, h, data: state.previewData.data };
+    const id = buildImageDataMain(fakeSrc, currentParams(), w, h);
+    rctx.putImageData(id, 0, 0);
+  }
+
+  // Inline duplicate of the worker's buildImageData for the no-worker path.
+  function buildImageDataMain(src, params, outW, outH) {
+    outW = outW || src.w;
+    outH = outH || src.h;
+    const sw = src.w, sh = src.h;
+    const swMax = sw - 1, shMax = sh - 1;
+    const swScale = sw / outW;
+    const shScale = sh / outH;
+    const srcData = src.data;
+    const out = new ImageData(outW, outH);
     const dst = out.data;
-    const params = currentParams();
-    const { cx, cy, r, fill, mode, outside } = params;
+    const { circles, fill, mode, outside } = params;
     const strength = typeof params.strength === 'number' ? params.strength : 1;
-    const r2 = r * r;
-    const [fr, fg, fb, fa] = fill;
+    const fr = fill[0], fg = fill[1], fb = fill[2], fa = fill[3];
     const edge = outside === 'edge';
-    const wMax = w - 1, hMax = h - 1;
-    const cxC = cx < 0 ? 0 : (cx > wMax ? wMax : cx | 0);
-    const cyC = cy < 0 ? 0 : (cy > hMax ? hMax : cy | 0);
-    if (mode === 'bilinear') {
-      for (let y = 0; y < h; y++) {
-        const dy = y - cy, dy2 = dy * dy, rowOut = y * w * 4;
-        for (let x = 0; x < w; x++) {
-          const dx = x - cx, d2 = dx*dx + dy2, o = rowOut + x*4;
-          if (d2 < 0.5) {
-            if (strength <= 0) {
-              const si = (y*w + x)*4;
-              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
-            } else if (edge) {
-              const si = (cyC*w + cxC)*4;
-              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
-            } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
-            continue;
+    const bilinear = mode === 'bilinear';
+    const cn = circles.length;
+    const ccx = new Float64Array(cn);
+    const ccy = new Float64Array(cn);
+    const cr2 = new Float64Array(cn);
+    for (let i = 0; i < cn; i++) {
+      ccx[i] = circles[i].cx;
+      ccy[i] = circles[i].cy;
+      cr2[i] = circles[i].r * circles[i].r;
+    }
+    for (let y = 0; y < outH; y++) {
+      const rowOut = y * outW * 4;
+      for (let x = 0; x < outW; x++) {
+        const o = rowOut + x * 4;
+        let qx = x, qy = y;
+        let valid = true;
+        if (strength > 0 && cn > 0) {
+          for (let i = cn - 1; i >= 0; i--) {
+            const dx = qx - ccx[i];
+            const dy = qy - ccy[i];
+            const d2 = dx * dx + dy * dy;
+            if (d2 < 0.5) { valid = false; break; }
+            const k = cr2[i] / d2;
+            qx = ccx[i] + dx * k;
+            qy = ccy[i] + dy * k;
           }
-          const k = r2/d2;
-          const mult = 1 + strength * (k - 1);
-          let sx = cx + dx*mult, sy = cy + dy*mult;
-          if (sx < 0 || sy < 0 || sx > wMax || sy > hMax) {
-            if (edge) {
-              if (sx < 0) sx = 0; else if (sx > wMax) sx = wMax;
-              if (sy < 0) sy = 0; else if (sy > hMax) sy = hMax;
-              const ix = sx|0, iy = sy|0;
-              const si = (iy*w + ix)*4;
-              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
-            } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
-            continue;
-          }
-          const ix=sx|0, iy=sy|0, fx=sx-ix, fy=sy-iy;
-          const ix1 = ix < wMax ? ix+1 : ix;
-          const iy1 = iy < hMax ? iy+1 : iy;
-          const i00=(iy*w+ix)*4, i10=(iy*w+ix1)*4, i01=(iy1*w+ix)*4, i11=(iy1*w+ix1)*4;
-          const w00=(1-fx)*(1-fy), w10=fx*(1-fy), w01=(1-fx)*fy, w11=fx*fy;
-          dst[o]   = src[i00]*w00 + src[i10]*w10 + src[i01]*w01 + src[i11]*w11;
-          dst[o+1] = src[i00+1]*w00 + src[i10+1]*w10 + src[i01+1]*w01 + src[i11+1]*w11;
-          dst[o+2] = src[i00+2]*w00 + src[i10+2]*w10 + src[i01+2]*w01 + src[i11+2]*w11;
-          dst[o+3] = src[i00+3]*w00 + src[i10+3]*w10 + src[i01+3]*w01 + src[i11+3]*w11;
         }
-      }
-    } else {
-      for (let y = 0; y < h; y++) {
-        const dy = y - cy, dy2 = dy*dy, rowOut = y*w*4;
-        for (let x = 0; x < w; x++) {
-          const dx = x - cx, d2 = dx*dx + dy2, o = rowOut + x*4;
-          if (d2 < 0.5) {
-            if (strength <= 0) {
-              const si = (y*w + x)*4;
-              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
-            } else if (edge) {
-              const si = (cyC*w + cxC)*4;
-              dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
-            } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
-            continue;
-          }
-          const k = r2/d2;
-          const mult = 1 + strength * (k - 1);
-          const sx = cx + dx*mult, sy = cy + dy*mult;
-          let ix = sx|0, iy = sy|0;
-          if (ix < 0 || iy < 0 || ix >= w || iy >= h) {
+        let sx, sy;
+        if (!valid) {
+          if (edge) {
+            sx = x * swScale; sy = y * shScale;
+            if (sx < 0) sx = 0; else if (sx > swMax) sx = swMax;
+            if (sy < 0) sy = 0; else if (sy > shMax) sy = shMax;
+          } else { dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa; continue; }
+        } else {
+          const bx = (1 - strength) * x + strength * qx;
+          const by = (1 - strength) * y + strength * qy;
+          sx = bx * swScale; sy = by * shScale;
+          if (sx < 0 || sy < 0 || sx > swMax || sy > shMax) {
             if (edge) {
-              if (ix < 0) ix = 0; else if (ix > wMax) ix = wMax;
-              if (iy < 0) iy = 0; else if (iy > hMax) iy = hMax;
-            } else {
-              dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue;
-            }
+              if (sx < 0) sx = 0; else if (sx > swMax) sx = swMax;
+              if (sy < 0) sy = 0; else if (sy > shMax) sy = shMax;
+            } else { dst[o] = fr; dst[o+1] = fg; dst[o+2] = fb; dst[o+3] = fa; continue; }
           }
-          const si = (iy*w + ix)*4;
-          dst[o]=src[si]; dst[o+1]=src[si+1]; dst[o+2]=src[si+2]; dst[o+3]=src[si+3];
+        }
+        if (bilinear) {
+          const ix = sx | 0, iy = sy | 0, fx = sx - ix, fy = sy - iy;
+          const ix1 = ix < swMax ? ix + 1 : ix;
+          const iy1 = iy < shMax ? iy + 1 : iy;
+          const i00 = (iy * sw + ix) * 4, i10 = (iy * sw + ix1) * 4;
+          const i01 = (iy1 * sw + ix) * 4, i11 = (iy1 * sw + ix1) * 4;
+          const w00 = (1 - fx) * (1 - fy), w10 = fx * (1 - fy);
+          const w01 = (1 - fx) * fy, w11 = fx * fy;
+          dst[o]   = srcData[i00]*w00 + srcData[i10]*w10 + srcData[i01]*w01 + srcData[i11]*w11;
+          dst[o+1] = srcData[i00+1]*w00 + srcData[i10+1]*w10 + srcData[i01+1]*w01 + srcData[i11+1]*w11;
+          dst[o+2] = srcData[i00+2]*w00 + srcData[i10+2]*w10 + srcData[i01+2]*w01 + srcData[i11+2]*w11;
+          dst[o+3] = srcData[i00+3]*w00 + srcData[i10+3]*w10 + srcData[i01+3]*w01 + srcData[i11+3]*w11;
+        } else {
+          const ix = sx | 0, iy = sy | 0;
+          const si = (iy * sw + ix) * 4;
+          dst[o] = srcData[si]; dst[o+1] = srcData[si+1]; dst[o+2] = srcData[si+2]; dst[o+3] = srcData[si+3];
         }
       }
     }
-    rctx.putImageData(out, 0, 0);
+    return out;
   }
 
   function requestRender() {
@@ -1378,27 +1435,33 @@
       lctx.restore();
     }
 
-    lctx.save();
-    lctx.setLineDash([6, 6]);
-    lctx.lineWidth = 2;
-    lctx.strokeStyle = 'rgba(80,200,255,0.95)';
-    lctx.beginPath();
-    lctx.arc(state.cx, state.cy, state.r, 0, Math.PI * 2);
-    lctx.stroke();
-    lctx.strokeStyle = 'rgba(0,0,0,0.6)';
-    lctx.setLineDash([6, 6]);
-    lctx.lineDashOffset = 6;
-    lctx.beginPath();
-    lctx.arc(state.cx, state.cy, state.r, 0, Math.PI * 2);
-    lctx.stroke();
-    lctx.restore();
+    for (let i = 0; i < state.circles.length; i++) {
+      const c = state.circles[i];
+      const active = i === state.activeIndex;
+      const alpha = active ? 0.95 : 0.55;
+      lctx.save();
+      lctx.setLineDash([6, 6]);
+      lctx.lineWidth = active ? 2 : 1.5;
+      lctx.strokeStyle = `rgba(80,200,255,${alpha})`;
+      lctx.beginPath();
+      lctx.arc(c.cx, c.cy, c.r, 0, Math.PI * 2);
+      lctx.stroke();
+      lctx.strokeStyle = `rgba(0,0,0,${alpha * 0.6})`;
+      lctx.setLineDash([6, 6]);
+      lctx.lineDashOffset = 6;
+      lctx.beginPath();
+      lctx.arc(c.cx, c.cy, c.r, 0, Math.PI * 2);
+      lctx.stroke();
+      lctx.restore();
+    }
 
+    const ac = state.circles[state.activeIndex];
     lctx.save();
     lctx.fillStyle = 'rgba(74,163,255,0.95)';
     lctx.strokeStyle = '#fff';
     lctx.lineWidth = 2;
     lctx.beginPath();
-    lctx.arc(state.cx, state.cy, 6, 0, Math.PI * 2);
+    lctx.arc(ac.cx, ac.cy, 6, 0, Math.PI * 2);
     lctx.fill();
     lctx.stroke();
     lctx.restore();
@@ -1415,12 +1478,21 @@
   }
 
   function hitTest(x, y) {
-    const dx = x - state.cx;
-    const dy = y - state.cy;
-    const d = Math.hypot(dx, dy);
-    const edgeTol = Math.max(8, state.r * 0.05);
-    if (Math.abs(d - state.r) <= edgeTol) return 'edge';
-    return d < state.r ? 'inside' : 'outside';
+    const active = state.circles[state.activeIndex];
+    const ad = Math.hypot(x - active.cx, y - active.cy);
+    const edgeTol = Math.max(8, active.r * 0.05);
+    if (Math.abs(ad - active.r) <= edgeTol) return { type: 'edge', index: state.activeIndex };
+    if (ad < active.r) return { type: 'inside', index: state.activeIndex };
+    for (let i = 0; i < state.circles.length; i++) {
+      if (i === state.activeIndex) continue;
+      const c = state.circles[i];
+      const d = Math.hypot(x - c.cx, y - c.cy);
+      const tol = Math.max(8, c.r * 0.05);
+      if (Math.abs(d - c.r) <= tol || d < c.r) {
+        return { type: 'switch', index: i };
+      }
+    }
+    return { type: 'outside', index: -1 };
   }
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -1430,12 +1502,23 @@
     leftCanvas.setPointerCapture(e.pointerId);
     const { x, y } = canvasCoords(e);
     const hit = hitTest(x, y);
-    if (hit === 'edge') {
+    if (hit.type === 'edge') {
       state.dragMode = 'resize';
-    } else if (hit === 'inside') {
+    } else if (hit.type === 'inside') {
       state.dragOffsetX = state.cx - x;
       state.dragOffsetY = state.cy - y;
       state.dragMode = 'pan';
+    } else if (hit.type === 'switch') {
+      state.activeIndex = hit.index;
+      renderCircleList();
+      state.dragOffsetX = state.cx - x;
+      state.dragOffsetY = state.cy - y;
+      state.dragMode = 'pan';
+      updateInputs();
+      updateMeta();
+      drawOverlay();
+      drawGridOverlay();
+      scheduleHashWrite();
     } else {
       state.cx = clamp(x, 0, state.previewW);
       state.cy = clamp(y, 0, state.previewH);
@@ -1454,8 +1537,9 @@
     if (!state.dragMode) {
       const hit = hitTest(x, y);
       leftCanvas.style.cursor =
-        hit === 'edge' ? 'nwse-resize' :
-        hit === 'inside' ? 'grab' : 'crosshair';
+        hit.type === 'edge' ? 'nwse-resize' :
+        hit.type === 'inside' ? 'grab' :
+        hit.type === 'switch' ? 'pointer' : 'crosshair';
       return;
     }
     if (state.dragMode === 'pan') {
@@ -1648,65 +1732,16 @@
       const h = useFull ? state.fullH : state.previewH;
       const src = useFull ? state.fullData : state.previewData;
       const sx = w / state.previewW;
+      const sy = h / state.previewH;
+      const fakeSrc = { w, h, data: src.data };
+      const p = currentParams();
+      const scaledCircles = p.circles.map((c) => ({ cx: c.cx * sx, cy: c.cy * sy, r: c.r * sx }));
+      const params = { ...p, circles: scaledCircles };
+      const id = buildImageDataMain(fakeSrc, params, w, h);
       const oc = document.createElement('canvas');
       oc.width = w; oc.height = h;
       const ctx = oc.getContext('2d');
-      const out = ctx.createImageData(w, h);
-      const dst = out.data;
-      const srcArr = src.data;
-      const cx = state.cx * sx, cy = state.cy * (h / state.previewH), r = state.r * sx;
-      const r2 = r * r;
-      const [fr, fg, fb, fa] = parseFill();
-      const mode = getSamplingMode();
-      const edge = fillMode.value === 'edge';
-      const strength = typeof state.strength === 'number' ? state.strength : 1;
-      const wMax = w - 1, hMax = h - 1;
-      const cxC = cx < 0 ? 0 : (cx > wMax ? wMax : cx | 0);
-      const cyC = cy < 0 ? 0 : (cy > hMax ? hMax : cy | 0);
-      for (let y = 0; y < h; y++) {
-        const dy = y - cy, dy2 = dy*dy, rowOut = y*w*4;
-        for (let x = 0; x < w; x++) {
-          const dx = x - cx, d2 = dx*dx + dy2, o = rowOut + x*4;
-          if (d2 < 0.5) {
-            if (strength <= 0) {
-              const si = (y*w + x)*4;
-              dst[o]=srcArr[si]; dst[o+1]=srcArr[si+1]; dst[o+2]=srcArr[si+2]; dst[o+3]=srcArr[si+3];
-            } else if (edge) {
-              const si = (cyC*w + cxC)*4;
-              dst[o]=srcArr[si]; dst[o+1]=srcArr[si+1]; dst[o+2]=srcArr[si+2]; dst[o+3]=srcArr[si+3];
-            } else { dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; }
-            continue;
-          }
-          const k = r2/d2;
-          const mult = 1 + strength * (k - 1);
-          let sxp = cx + dx*mult, syp = cy + dy*mult;
-          const inBounds = sxp >= 0 && syp >= 0 && sxp <= wMax && syp <= hMax;
-          if (mode === 'bilinear' && inBounds) {
-            const ix=sxp|0, iy=syp|0, fxp=sxp-ix, fyp=syp-iy;
-            const ix1 = ix < wMax ? ix+1 : ix;
-            const iy1 = iy < hMax ? iy+1 : iy;
-            const i00=(iy*w+ix)*4, i10=(iy*w+ix1)*4, i01=(iy1*w+ix)*4, i11=(iy1*w+ix1)*4;
-            const w00=(1-fxp)*(1-fyp), w10=fxp*(1-fyp), w01=(1-fxp)*fyp, w11=fxp*fyp;
-            dst[o]   = srcArr[i00]*w00 + srcArr[i10]*w10 + srcArr[i01]*w01 + srcArr[i11]*w11;
-            dst[o+1] = srcArr[i00+1]*w00 + srcArr[i10+1]*w10 + srcArr[i01+1]*w01 + srcArr[i11+1]*w11;
-            dst[o+2] = srcArr[i00+2]*w00 + srcArr[i10+2]*w10 + srcArr[i01+2]*w01 + srcArr[i11+2]*w11;
-            dst[o+3] = srcArr[i00+3]*w00 + srcArr[i10+3]*w10 + srcArr[i01+3]*w01 + srcArr[i11+3]*w11;
-          } else {
-            let ix = sxp|0, iy = syp|0;
-            if (ix < 0 || iy < 0 || ix >= w || iy >= h) {
-              if (edge) {
-                if (ix < 0) ix = 0; else if (ix > wMax) ix = wMax;
-                if (iy < 0) iy = 0; else if (iy > hMax) iy = hMax;
-              } else {
-                dst[o]=fr; dst[o+1]=fg; dst[o+2]=fb; dst[o+3]=fa; continue;
-              }
-            }
-            const si = (iy*w+ix)*4;
-            dst[o]=srcArr[si]; dst[o+1]=srcArr[si+1]; dst[o+2]=srcArr[si+2]; dst[o+3]=srcArr[si+3];
-          }
-        }
-      }
-      ctx.putImageData(out, 0, 0);
+      ctx.putImageData(id, 0, 0);
       let target = oc;
       if (type === 'image/jpeg') {
         const bg = document.createElement('canvas');
@@ -1728,9 +1763,8 @@
 
   function getSnapshot() {
     return {
-      cx: state.cx,
-      cy: state.cy,
-      r: state.r,
+      circles: state.circles.map((c) => ({ cx: c.cx, cy: c.cy, r: c.r })),
+      activeIndex: state.activeIndex,
       strength: state.strength,
       fillMode: fillMode.value,
       fillColor: fillColor.value,
@@ -1742,16 +1776,21 @@
 
   function snapshotsEqual(a, b) {
     if (!a || !b) return false;
-    return a.cx === b.cx && a.cy === b.cy && a.r === b.r &&
-      a.strength === b.strength && a.fillMode === b.fillMode &&
-      a.fillColor === b.fillColor && a.sampling === b.sampling &&
-      a.gridOverlay === b.gridOverlay && a.gridSpacing === b.gridSpacing;
+    if (a.activeIndex !== b.activeIndex || a.strength !== b.strength ||
+      a.fillMode !== b.fillMode || a.fillColor !== b.fillColor ||
+      a.sampling !== b.sampling || a.gridOverlay !== b.gridOverlay ||
+      a.gridSpacing !== b.gridSpacing) return false;
+    if (a.circles.length !== b.circles.length) return false;
+    for (let i = 0; i < a.circles.length; i++) {
+      const ca = a.circles[i], cb = b.circles[i];
+      if (ca.cx !== cb.cx || ca.cy !== cb.cy || ca.r !== cb.r) return false;
+    }
+    return true;
   }
 
   function applySnapshot(snap) {
-    state.cx = snap.cx;
-    state.cy = snap.cy;
-    state.r = snap.r;
+    state.circles = snap.circles.map((c) => ({ cx: c.cx, cy: c.cy, r: c.r }));
+    state.activeIndex = Math.min(snap.activeIndex, state.circles.length - 1);
     state.strength = snap.strength;
     fillMode.value = snap.fillMode;
     fillColor.value = snap.fillColor;
@@ -1761,6 +1800,7 @@
     gridOverlay.checked = snap.gridOverlay;
     gridSpacing.value = snap.gridSpacing;
     syncFillColorEnabled();
+    renderCircleList();
     updateInputs();
     updateMeta();
     drawOverlay();
@@ -1808,6 +1848,67 @@
     historyIndex = -1;
     pushSnapshot();
   }
+
+  const circleListEl = document.getElementById('circleList');
+  const addCircleBtn = document.getElementById('addCircleBtn');
+  const removeCircleBtn = document.getElementById('removeCircleBtn');
+
+  function renderCircleList() {
+    circleListEl.innerHTML = '';
+    state.circles.forEach((_, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = String(i + 1);
+      if (i === state.activeIndex) btn.classList.add('active');
+      btn.addEventListener('click', () => setActiveCircle(i));
+      circleListEl.appendChild(btn);
+    });
+    removeCircleBtn.disabled = state.circles.length <= 1;
+  }
+
+  function setActiveCircle(i) {
+    if (i < 0 || i >= state.circles.length) return;
+    if (state.activeIndex === i) return;
+    state.activeIndex = i;
+    renderCircleList();
+    updateInputs();
+    updateMeta();
+    drawOverlay();
+    drawGridOverlay();
+    scheduleHashWrite();
+    pushSnapshot();
+  }
+
+  function addCircle() {
+    if (!state.previewData) return;
+    const minD = Math.min(state.previewW, state.previewH);
+    const offset = state.circles.length * 30;
+    state.circles.push({
+      cx: clamp(state.previewW / 2 + offset, 0, state.previewW),
+      cy: clamp(state.previewH / 2 + offset, 0, state.previewH),
+      r: minD * 0.2,
+    });
+    state.activeIndex = state.circles.length - 1;
+    renderCircleList();
+    updateInputs();
+    updateMeta();
+    requestRender();
+    pushSnapshot();
+  }
+
+  function removeCircle() {
+    if (state.circles.length <= 1) return;
+    state.circles.splice(state.activeIndex, 1);
+    if (state.activeIndex >= state.circles.length) state.activeIndex = state.circles.length - 1;
+    renderCircleList();
+    updateInputs();
+    updateMeta();
+    requestRender();
+    pushSnapshot();
+  }
+
+  addCircleBtn.addEventListener('click', addCircle);
+  removeCircleBtn.addEventListener('click', removeCircle);
 
   undoBtn.addEventListener('click', undo);
   redoBtn.addEventListener('click', redo);
