@@ -241,86 +241,90 @@
 <header>
   <h1>Image Inversion</h1>
   <div class="toolbar">
+    <select id="langSelect" title="Language">
+      <option value="ko">한국어</option>
+      <option value="en">English</option>
+    </select>
     <input type="file" id="fileInput" accept="image/*">
     <select id="formatSelect" title="Save format">
       <option value="image/png">PNG</option>
       <option value="image/jpeg">JPEG</option>
       <option value="image/webp">WEBP</option>
     </select>
-    <button id="saveBtn" class="primary">저장</button>
+    <button id="saveBtn" class="primary" data-i18n="save">저장</button>
   </div>
 </header>
 
 <main>
   <section class="panel">
-    <h2>원본 / 반전원</h2>
+    <h2 data-i18n="leftPanel">원본 / 반전원</h2>
     <div class="canvas-wrap" id="leftWrap">
-      <div class="empty-msg" id="leftEmpty">이미지를 업로드해 주세요</div>
+      <div class="empty-msg" id="leftEmpty" data-i18n="uploadPrompt">이미지를 업로드해 주세요</div>
       <canvas id="leftCanvas" style="display:none"></canvas>
     </div>
     <div class="controls">
       <div class="control">
-        <label for="cxInput">중심 X (%)</label>
+        <label for="cxInput" data-i18n="cx">중심 X (%)</label>
         <input type="number" id="cxInput" min="0" max="100" step="0.1" value="50">
       </div>
       <div class="control">
-        <label for="cyInput">중심 Y (%)</label>
+        <label for="cyInput" data-i18n="cy">중심 Y (%)</label>
         <input type="number" id="cyInput" min="0" max="100" step="0.1" value="50">
       </div>
       <div class="control">
-        <label for="rInput">반지름 (px, 미리보기 기준)</label>
+        <label for="rInput" data-i18n="radius">반지름 (px, 미리보기 기준)</label>
         <input type="number" id="rInput" min="1" step="1" value="100">
       </div>
     </div>
     <details id="advanced">
-      <summary>고급 옵션</summary>
+      <summary data-i18n="advanced">고급 옵션</summary>
       <div class="advanced-body">
         <div class="fill-row">
-          <label for="fillMode">정보 없는 영역</label>
+          <label for="fillMode" data-i18n="fillLabel">정보 없는 영역</label>
           <select id="fillMode">
-            <option value="black">검정</option>
-            <option value="white">흰색</option>
-            <option value="custom">사용자 색</option>
-            <option value="transparent">투명</option>
-            <option value="edge">가장자리 확장</option>
+            <option value="black" data-i18n="fillBlack">검정</option>
+            <option value="white" data-i18n="fillWhite">흰색</option>
+            <option value="custom" data-i18n="fillCustom">사용자 색</option>
+            <option value="transparent" data-i18n="fillTransparent">투명</option>
+            <option value="edge" data-i18n="fillEdge">가장자리 확장</option>
           </select>
           <input type="color" id="fillColor" value="#000000">
         </div>
         <div class="radio-row">
-          <span>샘플링:</span>
-          <label><input type="radio" name="sampling" value="nearest"> Nearest (빠름)</label>
-          <label><input type="radio" name="sampling" value="bilinear" checked> Bilinear (부드러움)</label>
+          <span data-i18n="sampling">샘플링:</span>
+          <label><input type="radio" name="sampling" value="nearest"> <span data-i18n="samplingNearest">Nearest (빠름)</span></label>
+          <label><input type="radio" name="sampling" value="bilinear" checked> <span data-i18n="samplingBilinear">Bilinear (부드러움)</span></label>
         </div>
         <div class="check-row">
-          <label><input type="checkbox" id="saveFullRes" checked> 원본 해상도로 저장</label>
+          <label><input type="checkbox" id="saveFullRes" checked> <span data-i18n="saveFullRes">원본 해상도로 저장</span></label>
         </div>
         <div class="check-row">
-          <label><input type="checkbox" id="gridOverlay"> 그리드 오버레이</label>
+          <label><input type="checkbox" id="gridOverlay"> <span data-i18n="gridOverlay">그리드 오버레이</span></label>
           <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px;">
-            <span style="font-size:12px; color:var(--muted)">간격(px)</span>
+            <span style="font-size:12px; color:var(--muted)" data-i18n="gridSpacing">간격(px)</span>
             <input type="number" id="gridSpacing" min="2" step="1" style="width:70px; background:#0a0d11; border:1px solid var(--border); color:var(--text); padding:4px 6px; border-radius:5px; font-size:13px;">
           </label>
         </div>
       </div>
     </details>
     <div class="meta" id="meta"></div>
-    <div class="hint">
+    <div class="hint" data-i18n="leftHint">
       이미지 위를 클릭/탭하면 중심점이 이동합니다. 중심점을 드래그하면 위치를, 점선 경계를 드래그하면 반지름을 조절할 수 있어요.
     </div>
   </section>
 
   <section class="panel">
-    <h2>반전 결과</h2>
+    <h2 data-i18n="rightPanel">반전 결과</h2>
     <div class="canvas-wrap" id="rightWrap">
-      <div class="empty-msg" id="rightEmpty">결과가 여기에 표시됩니다</div>
+      <div class="empty-msg" id="rightEmpty" data-i18n="rightPlaceholder">결과가 여기에 표시됩니다</div>
       <canvas id="rightCanvas" style="display:none"></canvas>
       <canvas id="rightOverlay" style="display:none"></canvas>
     </div>
     <div class="view-controls">
-      <button id="resetViewBtn" type="button">화면 맞춤</button>
+      <button id="resetViewBtn" type="button" data-i18n="resetView">화면 맞춤</button>
       <span class="zoom-label" id="zoomLabel">100%</span>
     </div>
-    <div class="hint">
+    <div class="hint" data-i18n-html="rightHint">
       반전(inversion): 중심 O, 반지름 r의 원에 대해 점 Q를 OP·OQ = r²을 만족하는 P로 매핑합니다.<br>
       마우스 휠 또는 두 손가락 핀치로 확대/축소, 드래그로 이동, 더블클릭/더블탭으로 초기화.
     </div>
@@ -501,6 +505,103 @@
   const gridOverlay = document.getElementById('gridOverlay');
   const gridSpacing = document.getElementById('gridSpacing');
   const octx = rightOverlay.getContext('2d');
+  const langSelect = document.getElementById('langSelect');
+
+  const T = {
+    ko: {
+      title: 'Image Inversion',
+      save: '저장',
+      saving: '저장 중…',
+      leftPanel: '원본 / 반전원',
+      uploadPrompt: '이미지를 업로드해 주세요',
+      cx: '중심 X (%)',
+      cy: '중심 Y (%)',
+      radius: '반지름 (px, 미리보기 기준)',
+      advanced: '고급 옵션',
+      fillLabel: '정보 없는 영역',
+      fillBlack: '검정',
+      fillWhite: '흰색',
+      fillCustom: '사용자 색',
+      fillTransparent: '투명',
+      fillEdge: '가장자리 확장',
+      sampling: '샘플링:',
+      samplingNearest: 'Nearest (빠름)',
+      samplingBilinear: 'Bilinear (부드러움)',
+      saveFullRes: '원본 해상도로 저장',
+      gridOverlay: '그리드 오버레이',
+      gridSpacing: '간격(px)',
+      leftHint: '이미지 위를 클릭/탭하면 중심점이 이동합니다. 중심점을 드래그하면 위치를, 점선 경계를 드래그하면 반지름을 조절할 수 있어요.',
+      rightPanel: '반전 결과',
+      rightPlaceholder: '결과가 여기에 표시됩니다',
+      resetView: '화면 맞춤',
+      rightHint: '반전(inversion): 중심 O, 반지름 r의 원에 대해 점 Q를 OP·OQ = r²을 만족하는 P로 매핑합니다.<br>마우스 휠 또는 두 손가락 핀치로 확대/축소, 드래그로 이동, 더블클릭/더블탭으로 초기화.',
+      meta: (pw, ph, fw, fh, fr) =>
+        `미리보기: ${pw}×${ph}px · 원본: ${fw}×${fh}px · 원본 기준 반지름 ≈ ${fr}px`,
+    },
+    en: {
+      title: 'Image Inversion',
+      save: 'Save',
+      saving: 'Saving…',
+      leftPanel: 'Source / Inversion circle',
+      uploadPrompt: 'Upload an image',
+      cx: 'Center X (%)',
+      cy: 'Center Y (%)',
+      radius: 'Radius (px, preview scale)',
+      advanced: 'Advanced options',
+      fillLabel: 'Undefined region',
+      fillBlack: 'Black',
+      fillWhite: 'White',
+      fillCustom: 'Custom color',
+      fillTransparent: 'Transparent',
+      fillEdge: 'Edge clamp',
+      sampling: 'Sampling:',
+      samplingNearest: 'Nearest (fast)',
+      samplingBilinear: 'Bilinear (smooth)',
+      saveFullRes: 'Save at original resolution',
+      gridOverlay: 'Grid overlay',
+      gridSpacing: 'Spacing (px)',
+      leftHint: 'Click or tap the image to move the center. Drag the center to reposition, or drag the dashed edge to resize the radius.',
+      rightPanel: 'Inversion result',
+      rightPlaceholder: 'Result will appear here',
+      resetView: 'Reset view',
+      rightHint: 'Inversion: with center O and radius r, a point P (≠ O) is mapped to the point Q on ray OP that satisfies OP · OQ = r².<br>Wheel or two-finger pinch to zoom, drag to pan, double-click / double-tap to reset.',
+      meta: (pw, ph, fw, fh, fr) =>
+        `Preview: ${pw}×${ph}px · Original: ${fw}×${fh}px · Original-scale radius ≈ ${fr}px`,
+    },
+  };
+
+  let currentLang = 'ko';
+
+  function applyLang(lang) {
+    if (!T[lang]) lang = 'ko';
+    currentLang = lang;
+    const dict = T[lang];
+    document.documentElement.lang = lang;
+    document.title = dict.title;
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const key = el.dataset.i18n;
+      if (dict[key]) el.textContent = dict[key];
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+      const key = el.dataset.i18nHtml;
+      if (dict[key]) el.innerHTML = dict[key];
+    });
+    if (state.previewData) updateMeta();
+  }
+
+  function initLang() {
+    const stored = (() => { try { return localStorage.getItem('lang'); } catch { return null; } })();
+    const initial = stored && T[stored]
+      ? stored
+      : (navigator.language && navigator.language.toLowerCase().startsWith('ko') ? 'ko' : 'en');
+    langSelect.value = initial;
+    applyLang(initial);
+  }
+
+  langSelect.addEventListener('change', () => {
+    try { localStorage.setItem('lang', langSelect.value); } catch {}
+    applyLang(langSelect.value);
+  });
   const cxInput = document.getElementById('cxInput');
   const cyInput = document.getElementById('cyInput');
   const rInput = document.getElementById('rInput');
@@ -842,10 +943,10 @@
   function updateMeta() {
     const scale = state.fullW / state.previewW;
     const fullR = Math.round(state.r * scale);
-    metaEl.textContent =
-      `미리보기: ${state.previewW}×${state.previewH}px · ` +
-      `원본: ${state.fullW}×${state.fullH}px · ` +
-      `원본 기준 반지름 ≈ ${fullR}px`;
+    metaEl.textContent = T[currentLang].meta(
+      state.previewW, state.previewH,
+      state.fullW, state.fullH, fullR
+    );
   }
 
   function drawOverlay() {
@@ -1124,7 +1225,7 @@
     if (!state.previewData) return;
     saveBtn.disabled = true;
     const orig = saveBtn.textContent;
-    saveBtn.textContent = '저장 중…';
+    saveBtn.textContent = T[currentLang].saving;
     try {
       const { blob, ext } = await exportImage();
       if (!blob) return;
@@ -1148,7 +1249,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } finally {
       saveBtn.disabled = false;
-      saveBtn.textContent = orig;
+      saveBtn.textContent = T[currentLang].save;
     }
   });
 
@@ -1245,6 +1346,7 @@
   rightCanvas.addEventListener('pointerup', endRightPointer);
   rightCanvas.addEventListener('pointercancel', endRightPointer);
 
+  initLang();
   initWorker();
 })();
 </script>
