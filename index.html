@@ -802,40 +802,37 @@
     if (!isFinite(s) || s <= 1) s = Math.max(8, Math.min(w, h) / 12);
 
     octx.clearRect(0, 0, w, h);
+    const Nx = Math.ceil(Math.max(cx, w - cx) / s);
+    const Ny = Math.ceil(Math.max(cy, h - cy) / s);
 
-    const maxDist = Math.max(cx, cy, w - cx, h - cy) * 1.5;
-    const N = Math.min(200, Math.ceil(maxDist / s));
-
+    octx.strokeStyle = 'rgba(80,200,255,0.7)';
     octx.lineWidth = 1;
-    octx.strokeStyle = 'rgba(255,255,255,0.35)';
     octx.beginPath();
-    for (let k = -N; k <= N; k++) {
-      if (k === 0) continue;
-      const d = k * s;
-      const rc = r2 / (2 * Math.abs(d));
-      const cyh = cy + r2 / (2 * d);
-      octx.moveTo(cx + rc, cyh);
-      octx.arc(cx, cyh, rc, 0, Math.PI * 2);
-      const cxv = cx + r2 / (2 * d);
-      octx.moveTo(cxv + rc, cy);
-      octx.arc(cxv, cy, rc, 0, Math.PI * 2);
+    for (let k = -Nx; k <= Nx; k++) {
+      if (k === 0) {
+        octx.moveTo(cx, 0);
+        octx.lineTo(cx, h);
+      } else {
+        const d = k * s;
+        const rc = r2 / (2 * Math.abs(d));
+        const ccx = cx + r2 / (2 * d);
+        octx.moveTo(ccx + rc, cy);
+        octx.arc(ccx, cy, rc, 0, Math.PI * 2);
+      }
+    }
+    for (let k = -Ny; k <= Ny; k++) {
+      if (k === 0) {
+        octx.moveTo(0, cy);
+        octx.lineTo(w, cy);
+      } else {
+        const d = k * s;
+        const rc = r2 / (2 * Math.abs(d));
+        const ccy = cy + r2 / (2 * d);
+        octx.moveTo(cx + rc, ccy);
+        octx.arc(cx, ccy, rc, 0, Math.PI * 2);
+      }
     }
     octx.stroke();
-
-    octx.strokeStyle = 'rgba(255,225,90,0.75)';
-    octx.lineWidth = 1.25;
-    octx.beginPath();
-    octx.moveTo(0, cy); octx.lineTo(w, cy);
-    octx.moveTo(cx, 0); octx.lineTo(cx, h);
-    octx.stroke();
-
-    octx.strokeStyle = 'rgba(80,200,255,0.8)';
-    octx.lineWidth = 1.25;
-    octx.setLineDash([4, 4]);
-    octx.beginPath();
-    octx.arc(cx, cy, r, 0, Math.PI * 2);
-    octx.stroke();
-    octx.setLineDash([]);
   }
 
   function updateInputs() {
@@ -857,6 +854,32 @@
   function drawOverlay() {
     if (!state.srcCanvas) return;
     lctx.drawImage(state.srcCanvas, 0, 0);
+
+    if (gridOverlay && gridOverlay.checked) {
+      const w = state.previewW, h = state.previewH;
+      const cx = state.cx, cy = state.cy;
+      let s = parseFloat(gridSpacing.value);
+      if (!isFinite(s) || s <= 1) s = Math.max(8, Math.min(w, h) / 12);
+      const Nx = Math.ceil(Math.max(cx, w - cx) / s);
+      const Ny = Math.ceil(Math.max(cy, h - cy) / s);
+      lctx.save();
+      lctx.strokeStyle = 'rgba(80,200,255,0.7)';
+      lctx.lineWidth = 1;
+      lctx.beginPath();
+      for (let k = -Nx; k <= Nx; k++) {
+        const x = cx + k * s;
+        lctx.moveTo(x, 0);
+        lctx.lineTo(x, h);
+      }
+      for (let k = -Ny; k <= Ny; k++) {
+        const y = cy + k * s;
+        lctx.moveTo(0, y);
+        lctx.lineTo(w, y);
+      }
+      lctx.stroke();
+      lctx.restore();
+    }
+
     lctx.save();
     lctx.setLineDash([6, 6]);
     lctx.lineWidth = 2;
@@ -1000,9 +1023,15 @@
     el.addEventListener('change', requestRender);
   });
 
-  gridOverlay.addEventListener('change', drawGridOverlay);
+  gridOverlay.addEventListener('change', () => {
+    drawOverlay();
+    drawGridOverlay();
+  });
   gridSpacing.addEventListener('input', () => {
-    if (gridOverlay.checked) drawGridOverlay();
+    if (gridOverlay.checked) {
+      drawOverlay();
+      drawGridOverlay();
+    }
   });
 
   fileInput.addEventListener('change', (e) => {
