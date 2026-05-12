@@ -902,7 +902,7 @@
       rightWrap.style.aspectRatio = `${previewW} / ${previewH}`;
       rightWrap.style.minHeight = '0';
 
-      const prev = suppressHashWrite;
+      const prevSuppress = suppressHashWrite;
       suppressHashWrite = true;
       resetView();
       const vs = parseFloat(hashP.get('vs'));
@@ -915,7 +915,7 @@
         if (isFinite(vty)) view.ty = vty * rect.height;
         applyView();
       }
-      suppressHashWrite = prev;
+      suppressHashWrite = prevSuppress;
 
       updateInputs();
       updateMeta();
