@@ -1010,16 +1010,27 @@
   function scheduleHiResRender() {
     if (hiResTimer) clearTimeout(hiResTimer);
     hiResTimer = 0;
-    if (!worker || !state.previewData) return;
-    if (!view || view.scale <= 1.05) return;
+    if (!worker || !state.previewData) {
+      if (window.__hiDebug) console.log('[hires] schedule skip: no worker/preview');
+      return;
+    }
+    if (!view || view.scale <= 1.05) {
+      if (window.__hiDebug) console.log('[hires] schedule skip: scale', view && view.scale);
+      return;
+    }
+    if (window.__hiDebug) console.log('[hires] schedule at scale', view.scale);
     hiResTimer = setTimeout(triggerHiResRender, HIRES_DELAY);
   }
 
   function triggerHiResRender() {
     hiResTimer = 0;
     if (!worker || !state.previewData) return;
-    if (!view || view.scale <= 1.05) return;
+    if (!view || view.scale <= 1.05) {
+      if (window.__hiDebug) console.log('[hires] trigger skip: scale', view && view.scale);
+      return;
+    }
     if (workerBusy || hiResInFlight) {
+      if (window.__hiDebug) console.log('[hires] trigger retry: busy=', workerBusy, 'inFlight=', hiResInFlight);
       hiResTimer = setTimeout(triggerHiResRender, 100);
       return;
     }
@@ -1030,12 +1041,16 @@
       hiW = Math.round(state.fullW * s);
       hiH = Math.round(state.fullH * s);
     }
-    if (hiW <= state.previewW) return;
+    if (hiW <= state.previewW) {
+      if (window.__hiDebug) console.log('[hires] trigger skip: hiW', hiW, '<= previewW', state.previewW);
+      return;
+    }
     const sxScale = hiW / state.previewW;
     const syScale = hiH / state.previewH;
     const p = currentParams();
     const params = { ...p, cx: p.cx * sxScale, cy: p.cy * syScale, r: p.r * sxScale };
     hiResInFlight = true;
+    if (window.__hiDebug) console.log('[hires] send', { hiW, hiH, scale: view.scale });
     worker.postMessage({ type: 'renderHiRes', params, bitmapW: hiW, bitmapH: hiH });
   }
 
