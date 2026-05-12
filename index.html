@@ -802,30 +802,28 @@
     if (!isFinite(s) || s <= 1) s = Math.max(8, Math.min(w, h) / 12);
 
     octx.clearRect(0, 0, w, h);
-    const Nx = Math.ceil(Math.max(cx, w - cx) / s);
-    const Ny = Math.ceil(Math.max(cy, h - cy) / s);
 
     octx.strokeStyle = 'rgba(80,200,255,0.7)';
     octx.lineWidth = 1;
     octx.beginPath();
-    for (let k = -Nx; k <= Nx; k++) {
-      if (k === 0) {
-        octx.moveTo(cx, 0);
-        octx.lineTo(cx, h);
+    for (let x = 0; x <= w + 0.5; x += s) {
+      const d = x - cx;
+      if (Math.abs(d) < 0.5) {
+        octx.moveTo(x, 0);
+        octx.lineTo(x, h);
       } else {
-        const d = k * s;
         const rc = r2 / (2 * Math.abs(d));
         const ccx = cx + r2 / (2 * d);
         octx.moveTo(ccx + rc, cy);
         octx.arc(ccx, cy, rc, 0, Math.PI * 2);
       }
     }
-    for (let k = -Ny; k <= Ny; k++) {
-      if (k === 0) {
-        octx.moveTo(0, cy);
-        octx.lineTo(w, cy);
+    for (let y = 0; y <= h + 0.5; y += s) {
+      const d = y - cy;
+      if (Math.abs(d) < 0.5) {
+        octx.moveTo(0, y);
+        octx.lineTo(w, y);
       } else {
-        const d = k * s;
         const rc = r2 / (2 * Math.abs(d));
         const ccy = cy + r2 / (2 * d);
         octx.moveTo(cx + rc, ccy);
@@ -857,22 +855,17 @@
 
     if (gridOverlay && gridOverlay.checked) {
       const w = state.previewW, h = state.previewH;
-      const cx = state.cx, cy = state.cy;
       let s = parseFloat(gridSpacing.value);
       if (!isFinite(s) || s <= 1) s = Math.max(8, Math.min(w, h) / 12);
-      const Nx = Math.ceil(Math.max(cx, w - cx) / s);
-      const Ny = Math.ceil(Math.max(cy, h - cy) / s);
       lctx.save();
       lctx.strokeStyle = 'rgba(80,200,255,0.7)';
       lctx.lineWidth = 1;
       lctx.beginPath();
-      for (let k = -Nx; k <= Nx; k++) {
-        const x = cx + k * s;
+      for (let x = 0; x <= w + 0.5; x += s) {
         lctx.moveTo(x, 0);
         lctx.lineTo(x, h);
       }
-      for (let k = -Ny; k <= Ny; k++) {
-        const y = cy + k * s;
+      for (let y = 0; y <= h + 0.5; y += s) {
         lctx.moveTo(0, y);
         lctx.lineTo(w, y);
       }
