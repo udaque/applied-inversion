@@ -1044,13 +1044,8 @@
     }
     const wrapRect = rightWrap.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    let targetW = wrapRect.width * dpr * view.scale;
-    let targetH = wrapRect.height * dpr * view.scale;
-    let scaleDown = 1;
-    if (targetW > state.fullW) scaleDown = Math.min(scaleDown, state.fullW / targetW);
-    if (targetH > state.fullH) scaleDown = Math.min(scaleDown, state.fullH / targetH);
-    let hiW = Math.round(targetW * scaleDown);
-    let hiH = Math.round(targetH * scaleDown);
+    let hiW = Math.round(wrapRect.width * dpr * view.scale);
+    let hiH = Math.round(wrapRect.height * dpr * view.scale);
     const MAX_PIXELS = 12_000_000;
     if (hiW * hiH > MAX_PIXELS) {
       const s = Math.sqrt(MAX_PIXELS / (hiW * hiH));
