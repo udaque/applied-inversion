@@ -599,10 +599,73 @@
     if (state.previewData) updateMeta();
   }
 
+  function getHashParams() {
+    try { return new URLSearchParams(location.hash.replace(/^#/, '')); }
+    catch { return new URLSearchParams(); }
+  }
+
+  let suppressHashWrite = true;
+  let hashWriteTimer = 0;
+
+  function scheduleHashWrite() {
+    if (suppressHashWrite) return;
+    if (hashWriteTimer) return;
+    hashWriteTimer = setTimeout(() => {
+      hashWriteTimer = 0;
+      writeHashNow();
+    }, 200);
+  }
+
+  function writeHashNow() {
+    if (suppressHashWrite) return;
+    const params = new URLSearchParams();
+    params.set('lang', currentLang);
+    params.set('fill', fillMode.value);
+    params.set('fc', fillColor.value);
+    params.set('samp', (document.querySelector('input[name="sampling"]:checked') || {}).value || 'bilinear');
+    params.set('grid', gridOverlay.checked ? '1' : '0');
+    if (state && state.previewData) {
+      const minD = Math.min(state.previewW, state.previewH);
+      params.set('cx', (state.cx / state.previewW * 100).toFixed(2));
+      params.set('cy', (state.cy / state.previewH * 100).toFixed(2));
+      params.set('rp', (state.r / minD * 100).toFixed(2));
+      const gs = parseFloat(gridSpacing.value);
+      if (isFinite(gs)) params.set('gs', (gs / minD * 100).toFixed(2));
+      const rect = rightWrap.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && view) {
+        params.set('vs', view.scale.toFixed(3));
+        params.set('vtx', (view.tx / rect.width).toFixed(4));
+        params.set('vty', (view.ty / rect.height).toFixed(4));
+      }
+    }
+    const hash = '#' + params.toString();
+    if (location.hash !== hash) {
+      try { history.replaceState(null, '', hash); } catch {}
+    }
+  }
+
+  function applyHashToControls(p) {
+    const fill = p.get('fill');
+    if (fill && fillMode.querySelector(`option[value="${CSS.escape(fill)}"]`)) {
+      fillMode.value = fill;
+    }
+    const fc = p.get('fc');
+    if (fc && /^#[0-9a-fA-F]{6}$/.test(fc)) fillColor.value = fc;
+    const samp = p.get('samp');
+    if (samp === 'nearest' || samp === 'bilinear') {
+      document.querySelectorAll('input[name="sampling"]').forEach((r) => {
+        r.checked = r.value === samp;
+      });
+    }
+    if (p.get('grid') === '1') gridOverlay.checked = true;
+    else if (p.get('grid') === '0') gridOverlay.checked = false;
+  }
+
   function initLang() {
     const stored = (() => { try { return localStorage.getItem('lang'); } catch { return null; } })();
-    const initial = stored && T[stored]
-      ? stored
+    const hashLang = getHashParams().get('lang');
+    const initial = (hashLang && T[hashLang]) ? hashLang
+      : (stored && T[stored]) ? stored
       : (navigator.language && navigator.language.toLowerCase().startsWith('ko') ? 'ko' : 'en');
     langSelect.value = initial;
     applyLang(initial);
@@ -611,6 +674,7 @@
   langSelect.addEventListener('change', () => {
     try { localStorage.setItem('lang', langSelect.value); } catch {}
     applyLang(langSelect.value);
+    scheduleHashWrite();
   });
   const cxInput = document.getElementById('cxInput');
   const cyInput = document.getElementById('cyInput');
@@ -757,16 +821,28 @@
       state.fullH = fullH;
       state.previewData = previewData;
       state.fullData = fullData;
+      const minD = Math.min(previewW, previewH);
       state.cx = previewW / 2;
       state.cy = previewH / 2;
-      state.r = Math.min(previewW, previewH) * 0.3;
+      state.r = minD * 0.3;
+
+      const hashP = getHashParams();
+      const cxp = parseFloat(hashP.get('cx'));
+      const cyp = parseFloat(hashP.get('cy'));
+      const rp = parseFloat(hashP.get('rp'));
+      if (isFinite(cxp)) state.cx = Math.max(0, Math.min(previewW, cxp / 100 * previewW));
+      if (isFinite(cyp)) state.cy = Math.max(0, Math.min(previewH, cyp / 100 * previewH));
+      if (isFinite(rp) && rp > 0) state.r = Math.max(1, rp / 100 * minD);
 
       leftCanvas.width = previewW;
       leftCanvas.height = previewH;
       rightOverlay.width = previewW;
       rightOverlay.height = previewH;
-      if (!gridSpacing.value) {
-        gridSpacing.value = Math.max(8, Math.round(Math.min(previewW, previewH) / 12));
+      const gsp = parseFloat(hashP.get('gs'));
+      if (isFinite(gsp) && gsp > 0) {
+        gridSpacing.value = String(Math.max(2, Math.round(gsp / 100 * minD)));
+      } else if (!gridSpacing.value) {
+        gridSpacing.value = Math.max(8, Math.round(minD / 12));
       }
 
       leftCanvas.style.display = 'block';
@@ -776,7 +852,21 @@
 
       rightWrap.style.aspectRatio = `${previewW} / ${previewH}`;
       rightWrap.style.minHeight = '0';
+
+      const prev = suppressHashWrite;
+      suppressHashWrite = true;
       resetView();
+      const vs = parseFloat(hashP.get('vs'));
+      const vtx = parseFloat(hashP.get('vtx'));
+      const vty = parseFloat(hashP.get('vty'));
+      if (isFinite(vs) && vs > 0) {
+        view.scale = Math.max(0.2, Math.min(40, vs));
+        const rect = rightWrap.getBoundingClientRect();
+        if (isFinite(vtx)) view.tx = vtx * rect.width;
+        if (isFinite(vty)) view.ty = vty * rect.height;
+        applyView();
+      }
+      suppressHashWrite = prev;
 
       updateInputs();
       updateMeta();
@@ -893,6 +983,7 @@
     drawGridOverlay();
     if (worker) sendRender();
     else renderSyncFallback();
+    scheduleHashWrite();
   }
 
   function drawGridOverlay() {
@@ -1121,6 +1212,7 @@
   });
   fillColor.addEventListener('input', () => {
     if (fillMode.value === 'custom') requestRender();
+    else scheduleHashWrite();
   });
   document.querySelectorAll('input[name="sampling"]').forEach(el => {
     el.addEventListener('change', requestRender);
@@ -1129,12 +1221,14 @@
   gridOverlay.addEventListener('change', () => {
     drawOverlay();
     drawGridOverlay();
+    scheduleHashWrite();
   });
   gridSpacing.addEventListener('input', () => {
     if (gridOverlay.checked) {
       drawOverlay();
       drawGridOverlay();
     }
+    scheduleHashWrite();
   });
 
   fileInput.addEventListener('change', (e) => {
@@ -1276,6 +1370,7 @@
     rightCanvas.style.transform = t;
     rightOverlay.style.transform = t;
     if (zoomLabel) zoomLabel.textContent = `${Math.round(view.scale * 100)}%`;
+    scheduleHashWrite();
   }
 
   function zoomAt(x, y, factor) {
@@ -1358,8 +1453,11 @@
   rightCanvas.addEventListener('pointerup', endRightPointer);
   rightCanvas.addEventListener('pointercancel', endRightPointer);
 
+  applyHashToControls(getHashParams());
+  syncFillColorEnabled();
   initLang();
   initWorker();
+  suppressHashWrite = false;
 })();
 </script>
 </body>
