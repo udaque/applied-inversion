@@ -167,7 +167,6 @@
     display: flex;
     gap: 10px;
     align-items: center;
-    margin-top: 12px;
     flex-wrap: wrap;
   }
   .fill-row label { font-size: 12px; color: var(--muted); }
@@ -273,20 +272,20 @@
         <input type="number" id="rInput" min="1" step="1" value="100">
       </div>
     </div>
-    <div class="fill-row">
-      <label for="fillMode">정보 없는 영역</label>
-      <select id="fillMode">
-        <option value="black">검정</option>
-        <option value="white">흰색</option>
-        <option value="custom">사용자 색</option>
-        <option value="transparent">투명</option>
-        <option value="edge">가장자리 확장</option>
-      </select>
-      <input type="color" id="fillColor" value="#000000">
-    </div>
     <details id="advanced">
       <summary>고급 옵션</summary>
       <div class="advanced-body">
+        <div class="fill-row">
+          <label for="fillMode">정보 없는 영역</label>
+          <select id="fillMode">
+            <option value="black">검정</option>
+            <option value="white">흰색</option>
+            <option value="custom">사용자 색</option>
+            <option value="transparent">투명</option>
+            <option value="edge">가장자리 확장</option>
+          </select>
+          <input type="color" id="fillColor" value="#000000">
+        </div>
         <div class="radio-row">
           <span>샘플링:</span>
           <label><input type="radio" name="sampling" value="nearest"> Nearest (빠름)</label>
