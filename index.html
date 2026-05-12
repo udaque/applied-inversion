@@ -1396,10 +1396,8 @@
     const dy = y - state.cy;
     const d = Math.hypot(dx, dy);
     const edgeTol = Math.max(8, state.r * 0.05);
-    const centerTol = 12;
-    if (d <= centerTol) return 'center';
     if (Math.abs(d - state.r) <= edgeTol) return 'edge';
-    return 'move';
+    return d < state.r ? 'inside' : 'outside';
   }
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -1411,12 +1409,16 @@
     const hit = hitTest(x, y);
     if (hit === 'edge') {
       state.dragMode = 'resize';
-    } else if (hit === 'center') {
-      state.dragMode = 'move';
+    } else if (hit === 'inside') {
+      state.dragOffsetX = state.cx - x;
+      state.dragOffsetY = state.cy - y;
+      state.dragMode = 'pan';
     } else {
       state.cx = clamp(x, 0, state.previewW);
       state.cy = clamp(y, 0, state.previewH);
-      state.dragMode = 'move';
+      state.dragOffsetX = 0;
+      state.dragOffsetY = 0;
+      state.dragMode = 'pan';
       updateInputs();
       updateMeta();
       requestRender();
@@ -1430,12 +1432,12 @@
       const hit = hitTest(x, y);
       leftCanvas.style.cursor =
         hit === 'edge' ? 'nwse-resize' :
-        hit === 'center' ? 'grab' : 'crosshair';
+        hit === 'inside' ? 'grab' : 'crosshair';
       return;
     }
-    if (state.dragMode === 'move') {
-      state.cx = clamp(x, 0, state.previewW);
-      state.cy = clamp(y, 0, state.previewH);
+    if (state.dragMode === 'pan') {
+      state.cx = clamp(x + (state.dragOffsetX || 0), 0, state.previewW);
+      state.cy = clamp(y + (state.dragOffsetY || 0), 0, state.previewH);
     } else if (state.dragMode === 'resize') {
       state.r = Math.max(1, Math.hypot(x - state.cx, y - state.cy));
     }
