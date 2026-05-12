@@ -245,6 +245,57 @@
     font-size: 12px;
     margin-top: 8px;
   }
+  .share-wrap { position: relative; }
+  .share-popover {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    min-width: 220px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+    z-index: 100;
+  }
+  .share-wrap.open .share-popover { display: block; }
+  .share-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .share-buttons button {
+    width: 100%;
+    font-size: 12px;
+    padding: 7px 6px;
+  }
+  .share-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.5);
+    z-index: 1000;
+    max-width: 90vw;
+    text-align: center;
+  }
+  .toast[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -262,8 +313,26 @@
       <option value="image/webp">WEBP</option>
     </select>
     <button id="saveBtn" class="primary" data-i18n="save">저장</button>
+    <div class="share-wrap" id="shareWrap">
+      <button id="shareBtn" data-i18n="share">공유</button>
+      <div class="share-popover" id="sharePopover">
+        <div class="share-buttons">
+          <button type="button" data-share="bluesky">Bluesky</button>
+          <button type="button" data-share="x">X</button>
+          <button type="button" data-share="threads">Threads</button>
+          <button type="button" data-share="instagram">Instagram</button>
+          <button type="button" data-share="native" id="shareNativeBtn" data-i18n="shareNative">기기 공유…</button>
+          <button type="button" data-share="copy" data-i18n="shareCopyLink">링크 복사</button>
+        </div>
+        <label class="share-check">
+          <input type="checkbox" id="shareIncludeSettings">
+          <span data-i18n="shareIncludeSettings">현재 설정 포함</span>
+        </label>
+      </div>
+    </div>
   </div>
 </header>
+<div class="toast" id="toast" hidden></div>
 
 <main>
   <section class="panel">
@@ -589,6 +658,18 @@
       rightHint: '반전(inversion): 중심 O, 반지름 r의 원에 대해 점 Q를 OP·OQ = r²을 만족하는 P로 매핑합니다.<br>마우스 휠 또는 두 손가락 핀치로 확대/축소, 드래그로 이동, 더블클릭/더블탭으로 초기화.',
       meta: (pw, ph, fw, fh, fr) =>
         `미리보기: ${pw}×${ph}px · 원본: ${fw}×${fh}px · 원본 기준 반지름 ≈ ${fr}px`,
+      share: '공유',
+      shareNative: '기기 공유…',
+      shareCopyLink: '링크 복사',
+      shareIncludeSettings: '현재 설정 포함',
+      shareText: (v, url) => `이미지에 반전을 추가하다 — Applied Inversion v${v} — ${url}`,
+      shareTextShort: (v) => `이미지에 반전을 추가하다 — Applied Inversion v${v}`,
+      toastImageCopied: '이미지가 클립보드에 복사됐어요. 작성창에 붙여넣기 하세요.',
+      toastImageDownloaded: '이미지를 다운로드했어요. 작성창에 첨부하세요.',
+      toastLinkCopied: '링크가 복사됐어요.',
+      toastShareFailed: '공유에 실패했어요.',
+      toastNoImage: '먼저 이미지를 업로드해 주세요.',
+      toastInstagramDesktop: '이미지를 다운로드했어요. Instagram에서 업로드하세요.',
     },
     en: {
       title: 'Image Inversion',
@@ -619,6 +700,18 @@
       rightHint: 'Inversion: with center O and radius r, a point P (≠ O) is mapped to the point Q on ray OP that satisfies OP · OQ = r².<br>Wheel or two-finger pinch to zoom, drag to pan, double-click / double-tap to reset.',
       meta: (pw, ph, fw, fh, fr) =>
         `Preview: ${pw}×${ph}px · Original: ${fw}×${fh}px · Original-scale radius ≈ ${fr}px`,
+      share: 'Share',
+      shareNative: 'Device share…',
+      shareCopyLink: 'Copy link',
+      shareIncludeSettings: 'Include current settings',
+      shareText: (v, url) => `Inversion, applied. — Applied Inversion v${v} — ${url}`,
+      shareTextShort: (v) => `Inversion, applied. — Applied Inversion v${v}`,
+      toastImageCopied: 'Image copied to clipboard. Paste it into the compose window.',
+      toastImageDownloaded: 'Image downloaded. Attach it to your post.',
+      toastLinkCopied: 'Link copied.',
+      toastShareFailed: 'Share failed.',
+      toastNoImage: 'Upload an image first.',
+      toastInstagramDesktop: 'Image downloaded. Upload it on Instagram.',
     },
   };
 
@@ -1287,10 +1380,11 @@
 
   leftEmpty.addEventListener('click', () => fileInput.click());
 
-  async function exportImage() {
-    const type = formatSelect.value;
+  async function exportImage(opts) {
+    opts = opts || {};
+    const type = opts.format || formatSelect.value;
     const ext = type === 'image/jpeg' ? 'jpg' : type === 'image/webp' ? 'webp' : 'png';
-    const useFull = saveFullRes.checked;
+    const useFull = opts.useFull !== undefined ? opts.useFull : saveFullRes.checked;
     if (worker) {
       return new Promise((resolve) => {
         exportResolver = resolve;
@@ -1501,6 +1595,142 @@
   }
   rightCanvas.addEventListener('pointerup', endRightPointer);
   rightCanvas.addEventListener('pointercancel', endRightPointer);
+
+  const VERSION = '0.1';
+  const shareWrap = document.getElementById('shareWrap');
+  const shareBtn = document.getElementById('shareBtn');
+  const shareNativeBtn = document.getElementById('shareNativeBtn');
+  const shareIncludeSettings = document.getElementById('shareIncludeSettings');
+  const toastEl = document.getElementById('toast');
+
+  let toastTimer = 0;
+  function showToast(msg) {
+    if (!msg) return;
+    toastEl.textContent = msg;
+    toastEl.hidden = false;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toastEl.hidden = true; }, 3200);
+  }
+
+  function getShareLink() {
+    return shareIncludeSettings.checked
+      ? location.href
+      : (location.origin + location.pathname);
+  }
+
+  async function copyImageToClipboardSafe(blob) {
+    if (!blob || !navigator.clipboard || typeof ClipboardItem === 'undefined') return false;
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      return true;
+    } catch { return false; }
+  }
+
+  function downloadBlob(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function getShareBlob() {
+    try {
+      const r = await exportImage({ format: 'image/png', useFull: true });
+      return r && r.blob ? r.blob : null;
+    } catch { return null; }
+  }
+
+  shareBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    shareWrap.classList.toggle('open');
+  });
+  document.addEventListener('click', (e) => {
+    if (!shareWrap.contains(e.target)) shareWrap.classList.remove('open');
+  });
+
+  function canNativeShareFiles() {
+    try {
+      const probe = new File([new Blob()], 'p.png', { type: 'image/png' });
+      return !!(navigator.canShare && navigator.canShare({ files: [probe] }));
+    } catch { return false; }
+  }
+  if (!canNativeShareFiles()) {
+    shareNativeBtn.style.display = 'none';
+  }
+
+  async function handleShare(platform) {
+    const dict = T[currentLang];
+    if (platform === 'copy') {
+      try {
+        await navigator.clipboard.writeText(getShareLink());
+        showToast(dict.toastLinkCopied);
+      } catch {
+        showToast(dict.toastShareFailed);
+      }
+      shareWrap.classList.remove('open');
+      return;
+    }
+    if (!state.previewData) {
+      showToast(dict.toastNoImage);
+      return;
+    }
+    const blob = await getShareBlob();
+    const file = blob ? new File([blob], 'inversion.png', { type: 'image/png' }) : null;
+    const text = dict.shareText(VERSION, getShareLink());
+
+    if (platform === 'native' || platform === 'instagram') {
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], text, title: 'Applied Inversion' });
+          shareWrap.classList.remove('open');
+          return;
+        } catch (err) {
+          if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
+            shareWrap.classList.remove('open');
+            return;
+          }
+        }
+      }
+      if (platform === 'instagram') {
+        if (blob) downloadBlob(blob, 'inversion.png');
+        window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer');
+        showToast(dict.toastInstagramDesktop);
+      } else {
+        try {
+          await navigator.clipboard.writeText(getShareLink());
+          showToast(dict.toastLinkCopied);
+        } catch { showToast(dict.toastShareFailed); }
+      }
+      shareWrap.classList.remove('open');
+      return;
+    }
+
+    const copied = await copyImageToClipboardSafe(blob);
+    let url = null;
+    if (platform === 'bluesky') {
+      url = `https://bsky.app/intent/compose?text=${encodeURIComponent(text)}`;
+    } else if (platform === 'x') {
+      const link = getShareLink();
+      const t = dict.shareTextShort(VERSION);
+      url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}&url=${encodeURIComponent(link)}`;
+    } else if (platform === 'threads') {
+      url = `https://www.threads.net/intent/post?text=${encodeURIComponent(text)}`;
+    }
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+
+    if (copied) {
+      showToast(dict.toastImageCopied);
+    } else if (blob) {
+      downloadBlob(blob, 'inversion.png');
+      showToast(dict.toastImageDownloaded);
+    }
+    shareWrap.classList.remove('open');
+  }
+
+  document.querySelectorAll('[data-share]').forEach((btn) => {
+    btn.addEventListener('click', () => handleShare(btn.dataset.share));
+  });
 
   applyHashToControls(getHashParams());
   syncFillColorEnabled();
