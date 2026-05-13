@@ -340,6 +340,86 @@
     cursor: pointer;
   }
   .preset-ctrl { gap: 6px; }
+  .anim-banner {
+    background: linear-gradient(180deg, #1b2933 0%, #16222b 100%);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+  }
+  .anim-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .anim-row + .anim-row { margin-top: 8px; }
+  .anim-badge {
+    background: var(--accent);
+    color: #000;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .frame-tabs {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .frame-tab {
+    padding: 5px 12px;
+    font-size: 12px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--muted);
+    font-family: inherit;
+  }
+  .frame-tab.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+  }
+  .anim-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .anim-field input[type="number"] {
+    width: 54px;
+    background: #0a0d11;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: inherit;
+  }
+  .anim-field .suffix { color: var(--muted); }
+  .anim-exit {
+    margin-left: auto;
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+  .progress-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 14px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.1s linear;
+  }
   .radio-row, .check-row {
     display: flex;
     gap: 14px;
@@ -642,6 +722,18 @@
     <div class="modal-body" id="infoModalBody"></div>
   </div>
 </div>
+<div class="modal" id="animRenderModal" hidden>
+  <div class="modal-card" style="max-width: 420px;">
+    <div class="modal-body">
+      <h3 data-i18n="animRenderingTitle">애니메이션 저장 중…</h3>
+      <div class="progress-bar"><div class="progress-fill" id="animProgressFill"></div></div>
+      <div id="animProgressText" style="color: var(--muted); font-size: 12px; margin-top: 8px;">0 / 0</div>
+      <div class="modal-actions">
+        <button type="button" id="animCancelBtn" data-i18n="cancel">취소</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal" id="savePresetModal" hidden>
   <div class="modal-card" style="max-width: 460px;">
     <button class="modal-close" id="savePresetClose" aria-label="Close">×</button>
@@ -664,6 +756,24 @@
 <main>
   <section class="panel">
     <h2 data-i18n="leftPanel">원본 / 반전원</h2>
+    <div class="anim-banner" id="animBanner" hidden>
+      <div class="anim-row">
+        <span class="anim-badge" data-i18n="animMode">애니메이션 모드</span>
+        <div class="frame-tabs">
+          <button type="button" class="frame-tab active" data-frame="first" data-i18n="animFirst">첫 프레임</button>
+          <button type="button" class="frame-tab" data-frame="last" data-i18n="animLast">마지막 프레임</button>
+        </div>
+        <button type="button" id="exitAnimBtn" class="anim-exit" data-i18n="animExit">종료</button>
+      </div>
+      <div class="anim-row">
+        <label class="anim-field"><span data-i18n="animDuration">길이</span>
+          <input type="number" id="animDuration" min="0.5" max="30" step="0.5" value="3"><span class="suffix" data-i18n="animSec">초</span>
+        </label>
+        <label class="anim-field"><span data-i18n="animFps">FPS</span>
+          <input type="number" id="animFps" min="1" max="60" step="1" value="30">
+        </label>
+      </div>
+    </div>
     <div class="canvas-wrap" id="leftWrap">
       <div class="empty-msg" id="leftEmpty" data-i18n="uploadPrompt">이미지를 업로드해 주세요</div>
       <canvas id="leftCanvas" style="display:none"></canvas>
@@ -765,6 +875,34 @@
         <div class="option-ctrl">
           <input type="checkbox" id="saveFullRes" checked>
         </div>
+
+        <h4 class="section-heading" data-i18n="sectionAnim">애니메이션</h4>
+
+        <span class="option-label" data-i18n="animModeLabel">애니메이션</span>
+        <button type="button" class="info-icon" id="animInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <button type="button" id="enterAnimBtn" data-i18n="animEnter">애니메이션 시작</button>
+        </div>
+
+        <label class="option-label" for="animFormat" data-i18n="animFormat">포맷</label>
+        <button type="button" class="info-icon" id="animFormatInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <select id="animFormat">
+            <option value="webm">WebM</option>
+            <option value="mp4">MP4</option>
+          </select>
+        </div>
+
+        <label class="option-label" for="animEasing" data-i18n="animEasingLabel">보간</label>
+        <button type="button" class="info-icon" id="animEasingInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <select id="animEasing">
+            <option value="linear" data-i18n="easingLinear">선형</option>
+            <option value="easeInOut" selected data-i18n="easingEaseInOut">Ease-in-out</option>
+            <option value="smoothstep" data-i18n="easingSmoothstep">Smoothstep</option>
+            <option value="smootherstep" data-i18n="easingSmootherstep">Smootherstep</option>
+          </select>
+        </div>
       </div>
     </details>
     <div class="meta" id="meta"></div>
@@ -807,6 +945,14 @@
       const out = buildImageData(preview, msg.params, preview.w, preview.h);
       self.postMessage(
         { type: 'rendered', token: msg.token, buffer: out.data.buffer, w: preview.w, h: preview.h },
+        [out.data.buffer]
+      );
+    } else if (msg.type === 'renderFrame') {
+      const w = msg.w || preview.w;
+      const h = msg.h || preview.h;
+      const out = buildImageData(preview, msg.params, w, h);
+      self.postMessage(
+        { type: 'frameRendered', token: msg.token, buffer: out.data.buffer, w, h },
         [out.data.buffer]
       );
     } else if (msg.type === 'renderHiRes') {
@@ -1036,6 +1182,62 @@
       sectionImage: '이미지',
       sectionViz: '보조 시각화',
       sectionIO: '입출력',
+      sectionAnim: '애니메이션',
+      animMode: '애니메이션 모드',
+      animFirst: '첫 프레임',
+      animLast: '마지막 프레임',
+      animExit: '종료',
+      animDuration: '길이',
+      animFps: 'FPS',
+      animSec: '초',
+      animModeLabel: '애니메이션',
+      animEnter: '애니메이션 시작',
+      animFormat: '포맷',
+      animEasingLabel: '보간',
+      easingLinear: '선형',
+      easingEaseInOut: 'Ease-in-out',
+      easingSmoothstep: 'Smoothstep',
+      easingSmootherstep: 'Smootherstep (가장 부드러움)',
+      animRenderingTitle: '애니메이션 저장 중…',
+      animFrameProgress: (i, n) => `프레임 ${i} / ${n}`,
+      animDoneToast: '애니메이션을 저장했어요.',
+      animFailedToast: '애니메이션 저장에 실패했어요.',
+      animMp4Unsupported: '이 브라우저는 MP4 출력을 지원하지 않아 WebM으로 저장합니다.',
+      animExplain: `
+        <h3>애니메이션 모드</h3>
+        <p>두 키프레임(첫 / 마지막) 사이의 반전원·강도 변화를 영상으로 만듭니다.</p>
+        <h4>사용법</h4>
+        <ul>
+          <li><b>애니메이션 시작</b>을 누르면 모드 진입. 현재 상태가 첫 프레임과 마지막 프레임 둘 다에 복사됩니다.</li>
+          <li>상단 배너에서 <b>첫 프레임 / 마지막 프레임</b>을 전환하며 각각 따로 편집 (반전원 위치·개수·반지름, 강도 등).</li>
+          <li>배너에서 <b>길이</b>(초)와 <b>FPS</b>를 조절. 총 프레임 수 = 길이 × FPS.</li>
+          <li>상단의 <b>저장</b>을 누르면 보간된 프레임을 한 장씩 렌더링해 영상 파일로 내보냅니다.</li>
+        </ul>
+        <h4>참고</h4>
+        <ul>
+          <li>원 개수가 두 프레임에서 다르면 부족한 쪽은 반지름 0으로 채워, 자연스럽게 나타나거나 사라집니다.</li>
+          <li>저장 해상도는 현재 미리보기 기준이며 (긴 변 최대 900 px), 인코딩이 끝나면 파일이 자동 다운로드됩니다.</li>
+          <li>v1은 단일 키프레임 쌍만 지원합니다. 더 복잡한 시퀀스는 추후 추가 예정.</li>
+        </ul>
+      `,
+      animFormatExplain: `
+        <h3>애니메이션 포맷</h3>
+        <ul>
+          <li><b>WebM</b> — VP9 코덱, 모던 브라우저·SNS 호환성 좋음. iOS Photos에는 직접 못 들어가서 Files로 빠짐.</li>
+          <li><b>MP4</b> — 더 보편적 (H.264). 브라우저가 MP4 인코딩을 지원할 때만 활성화. 미지원 시 WebM으로 폴백.</li>
+        </ul>
+        <p>현재 브라우저의 MediaRecorder가 지원하지 않는 포맷은 자동으로 비활성화됩니다.</p>
+      `,
+      animEasingExplain: `
+        <h3>보간 방식</h3>
+        <p>첫 프레임에서 마지막 프레임으로 가는 동안 시간 <code>t</code> 가 어떻게 변하는지를 결정합니다.</p>
+        <ul>
+          <li><b>선형 (Linear)</b> — 균등한 속도. 단순하고 직관적.</li>
+          <li><b>Ease-in-out</b> — 시작과 끝은 천천히, 중간은 빠르게. 가장 흔한 자연스러움.</li>
+          <li><b>Smoothstep</b> — 부드러운 다항식 곡선. Ease-in-out과 비슷하지만 더 깔끔.</li>
+          <li><b>Smootherstep</b> — 5차 다항식. 미분이 끝점에서 0이라 가장 부드러운 시작/끝.</li>
+        </ul>
+      `,
       fillLabel: '채우기',
       fillBlack: '검정',
       fillWhite: '흰색',
@@ -1221,6 +1423,62 @@
       sectionImage: 'Image',
       sectionViz: 'Visualization',
       sectionIO: 'I/O',
+      sectionAnim: 'Animation',
+      animMode: 'Animation mode',
+      animFirst: 'First frame',
+      animLast: 'Last frame',
+      animExit: 'Exit',
+      animDuration: 'Duration',
+      animFps: 'FPS',
+      animSec: 's',
+      animModeLabel: 'Animation',
+      animEnter: 'Start animation',
+      animFormat: 'Format',
+      animEasingLabel: 'Interpolation',
+      easingLinear: 'Linear',
+      easingEaseInOut: 'Ease-in-out',
+      easingSmoothstep: 'Smoothstep',
+      easingSmootherstep: 'Smootherstep (smoothest)',
+      animRenderingTitle: 'Rendering animation…',
+      animFrameProgress: (i, n) => `Frame ${i} / ${n}`,
+      animDoneToast: 'Animation saved.',
+      animFailedToast: 'Animation save failed.',
+      animMp4Unsupported: 'This browser cannot encode MP4 directly; falling back to WebM.',
+      animExplain: `
+        <h3>Animation mode</h3>
+        <p>Tween between two keyframes (first / last) — circle positions, count, strength — and export the in-between frames as a video.</p>
+        <h4>How to use</h4>
+        <ul>
+          <li>Click <b>Start animation</b> to enter the mode. The current configuration is copied into both the first and last keyframes.</li>
+          <li>Use the banner at the top of the source panel to switch between <b>First / Last</b> and edit each frame separately (circle positions, count, radius, strength, …).</li>
+          <li>The banner also exposes the animation's <b>Duration</b> (seconds) and <b>FPS</b>. Total frames = Duration × FPS.</li>
+          <li>Pressing <b>Save</b> renders each interpolated frame and writes the result to a video file.</li>
+        </ul>
+        <h4>Notes</h4>
+        <ul>
+          <li>If the two frames differ in circle count, the shorter side is padded with radius-0 circles so circles smoothly appear or disappear.</li>
+          <li>v1 renders at the current preview resolution (≤ 900 px long side) and downloads automatically when finished.</li>
+          <li>Only a single first/last pair is supported in v1; richer sequences may come later.</li>
+        </ul>
+      `,
+      animFormatExplain: `
+        <h3>Animation format</h3>
+        <ul>
+          <li><b>WebM</b> — VP9 codec, great compatibility with modern browsers and social platforms. iOS Photos won't accept it directly (saved into Files instead).</li>
+          <li><b>MP4</b> — more universal (H.264). Available only when the current browser's MediaRecorder supports MP4 output; otherwise we fall back to WebM.</li>
+        </ul>
+        <p>Formats the browser cannot encode are automatically disabled.</p>
+      `,
+      animEasingExplain: `
+        <h3>Interpolation</h3>
+        <p>How time <code>t</code> progresses from the first frame to the last.</p>
+        <ul>
+          <li><b>Linear</b> — constant speed. Straightforward.</li>
+          <li><b>Ease-in-out</b> — slow at the ends, fast in the middle. The most common natural feel.</li>
+          <li><b>Smoothstep</b> — smooth polynomial curve, similar to ease-in-out but cleaner.</li>
+          <li><b>Smootherstep</b> — fifth-order polynomial. Derivatives vanish at both ends, giving the smoothest possible start and finish.</li>
+        </ul>
+      `,
       fillLabel: 'Fill',
       fillBlack: 'Black',
       fillWhite: 'White',
@@ -1566,6 +1824,7 @@
     groupViz: false,
     orbitMode: false,
     orbitSeeds: [],
+    animation: null,
     get cx() { return this.circles[this.activeIndex].cx; },
     set cx(v) { this.circles[this.activeIndex].cx = v; },
     get cy() { return this.circles[this.activeIndex].cy; },
@@ -1580,6 +1839,7 @@
   let pendingRender = false;
   let renderToken = 0;
   let exportResolver = null;
+  let frameResolver = null;
   let hiResTimer = 0;
   let hiResInFlight = false;
   const HIRES_MAX = 2400;
@@ -1610,6 +1870,12 @@
         if (pendingRender) {
           pendingRender = false;
           sendRender();
+        }
+      } else if (msg.type === 'frameRendered') {
+        if (frameResolver) {
+          const r = frameResolver;
+          frameResolver = null;
+          r({ buffer: msg.buffer, w: msg.w, h: msg.h });
         }
       } else if (msg.type === 'renderedHiRes') {
         paintWorkerResult(msg);
@@ -3110,6 +3376,10 @@
 
   saveBtn.addEventListener('click', async () => {
     if (!state.previewData) return;
+    if (state.animation && state.animation.active) {
+      await renderAnimation();
+      return;
+    }
     saveBtn.disabled = true;
     const orig = saveBtn.textContent;
     saveBtn.textContent = T[currentLang].saving;
@@ -3139,6 +3409,246 @@
       saveBtn.textContent = T[currentLang].save;
     }
   });
+
+  // ----- Animation mode -----
+  const animBanner = document.getElementById('animBanner');
+  const enterAnimBtn = document.getElementById('enterAnimBtn');
+  const exitAnimBtn = document.getElementById('exitAnimBtn');
+  const animDurationInput = document.getElementById('animDuration');
+  const animFpsInput = document.getElementById('animFps');
+  const animFormatSelect = document.getElementById('animFormat');
+  const animEasingSelect = document.getElementById('animEasing');
+  const animInfoBtn = document.getElementById('animInfo');
+  const animFormatInfoBtn = document.getElementById('animFormatInfo');
+  const animEasingInfoBtn = document.getElementById('animEasingInfo');
+  const animRenderModal = document.getElementById('animRenderModal');
+  const animProgressFill = document.getElementById('animProgressFill');
+  const animProgressText = document.getElementById('animProgressText');
+  const animCancelBtn = document.getElementById('animCancelBtn');
+  const frameTabBtns = document.querySelectorAll('.frame-tab');
+
+  let animCancelRequested = false;
+
+  function detectMp4Support() {
+    try {
+      return typeof MediaRecorder !== 'undefined' &&
+        MediaRecorder.isTypeSupported('video/mp4;codecs=avc1');
+    } catch { return false; }
+  }
+  function ensureFormatAvailability() {
+    const mp4Ok = detectMp4Support();
+    const opt = animFormatSelect.querySelector('option[value="mp4"]');
+    if (opt) opt.disabled = !mp4Ok;
+    if (!mp4Ok && animFormatSelect.value === 'mp4') animFormatSelect.value = 'webm';
+  }
+  ensureFormatAvailability();
+
+  animInfoBtn.addEventListener('click', () => showInfoModal('animExplain'));
+  animFormatInfoBtn.addEventListener('click', () => showInfoModal('animFormatExplain'));
+  animEasingInfoBtn.addEventListener('click', () => showInfoModal('animEasingExplain'));
+
+  function captureFrameState() {
+    return {
+      circles: state.circles.map(c => ({ cx: c.cx, cy: c.cy, r: c.r })),
+      activeIndex: state.activeIndex,
+      strength: state.strength,
+    };
+  }
+  function applyFrameState(snap) {
+    if (!snap) return;
+    state.circles = snap.circles.map(c => ({ cx: c.cx, cy: c.cy, r: c.r }));
+    state.activeIndex = Math.max(0, Math.min(state.circles.length - 1, snap.activeIndex || 0));
+    state.strength = snap.strength;
+    strengthInput.value = Math.round(state.strength * 100);
+    strengthValue.textContent = `${Math.round(state.strength * 100)}%`;
+    renderCircleList();
+    updateInputs();
+    updateMeta();
+    requestRender();
+  }
+
+  function enterAnimationMode() {
+    if (!state.previewData) {
+      showToast(T[currentLang].toastNoImage);
+      return;
+    }
+    const snap = captureFrameState();
+    state.animation = {
+      active: true,
+      editingFrame: 'first',
+      first: snap,
+      last: JSON.parse(JSON.stringify(snap)),
+    };
+    setFrameTabActive('first');
+    animBanner.hidden = false;
+    enterAnimBtn.disabled = true;
+  }
+  function exitAnimationMode() {
+    state.animation = null;
+    animBanner.hidden = true;
+    enterAnimBtn.disabled = false;
+  }
+  function switchAnimFrame(name) {
+    if (!state.animation || state.animation.editingFrame === name) return;
+    state.animation[state.animation.editingFrame] = captureFrameState();
+    state.animation.editingFrame = name;
+    setFrameTabActive(name);
+    applyFrameState(state.animation[name]);
+  }
+  function setFrameTabActive(name) {
+    frameTabBtns.forEach((b) => b.classList.toggle('active', b.dataset.frame === name));
+  }
+
+  enterAnimBtn.addEventListener('click', enterAnimationMode);
+  exitAnimBtn.addEventListener('click', exitAnimationMode);
+  frameTabBtns.forEach((b) => b.addEventListener('click', () => switchAnimFrame(b.dataset.frame)));
+
+  const easings = {
+    linear: t => t,
+    easeInOut: t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
+    smoothstep: t => t * t * (3 - 2 * t),
+    smootherstep: t => t * t * t * (t * (t * 6 - 15) + 10),
+  };
+
+  function interpolateCircles(a, b, e) {
+    const n = Math.max(a.length, b.length);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const ca = a[i];
+      const cb = b[i];
+      if (ca && cb) {
+        out.push({
+          cx: ca.cx + (cb.cx - ca.cx) * e,
+          cy: ca.cy + (cb.cy - ca.cy) * e,
+          r: ca.r + (cb.r - ca.r) * e,
+        });
+      } else if (ca) {
+        // disappearing: shrink to r=0
+        out.push({ cx: ca.cx, cy: ca.cy, r: ca.r * (1 - e) });
+      } else {
+        // appearing: grow from r=0
+        out.push({ cx: cb.cx, cy: cb.cy, r: cb.r * e });
+      }
+    }
+    return out;
+  }
+
+  function buildFrameParams(t) {
+    const a = state.animation.first;
+    const b = state.animation.last;
+    const ease = easings[animEasingSelect.value] || easings.linear;
+    const e = ease(t);
+    return {
+      circles: interpolateCircles(a.circles, b.circles, e),
+      strength: a.strength + (b.strength - a.strength) * e,
+      fill: parseFill(),
+      mode: getSamplingMode(),
+      outside: fillMode.value === 'edge' ? 'edge' : 'fill',
+    };
+  }
+
+  function renderFrameOnce(params) {
+    return new Promise((resolve) => {
+      frameResolver = resolve;
+      renderToken++;
+      worker.postMessage({ type: 'renderFrame', token: renderToken, params, w: state.previewW, h: state.previewH });
+    });
+  }
+
+  function showAnimProgress(i, n) {
+    const pct = n ? (i / n) * 100 : 0;
+    animProgressFill.style.width = `${pct}%`;
+    animProgressText.textContent = T[currentLang].animFrameProgress(i, n);
+  }
+
+  async function renderAnimation() {
+    if (!worker) {
+      showToast(T[currentLang].animFailedToast);
+      return;
+    }
+    const a = state.animation;
+    if (!a || !a.first || !a.last) return;
+    const dur = Math.max(0.1, parseFloat(animDurationInput.value) || 3);
+    const fps = Math.max(1, Math.min(60, parseInt(animFpsInput.value, 10) || 30));
+    const totalFrames = Math.max(1, Math.round(dur * fps));
+
+    let mimeType;
+    if (animFormatSelect.value === 'mp4' && detectMp4Support()) {
+      mimeType = 'video/mp4;codecs=avc1';
+    } else {
+      mimeType = 'video/webm;codecs=vp9';
+      if (animFormatSelect.value === 'mp4') showToast(T[currentLang].animMp4Unsupported);
+    }
+    if (!MediaRecorder.isTypeSupported(mimeType)) {
+      mimeType = 'video/webm';
+    }
+
+    const w = state.previewW, h = state.previewH;
+    const recordCanvas = document.createElement('canvas');
+    recordCanvas.width = w;
+    recordCanvas.height = h;
+    const rctx = recordCanvas.getContext('2d');
+    const stream = recordCanvas.captureStream(fps);
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    const stopped = new Promise((res) => { recorder.onstop = res; });
+
+    animCancelRequested = false;
+    animRenderModal.hidden = false;
+    saveBtn.disabled = true;
+    const prevText = saveBtn.textContent;
+    saveBtn.textContent = T[currentLang].saving;
+
+    recorder.start();
+    const startedAt = performance.now();
+    try {
+      for (let i = 0; i < totalFrames; i++) {
+        if (animCancelRequested) break;
+        const t = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+        const params = buildFrameParams(t);
+        const { buffer, w: rw, h: rh } = await renderFrameOnce(params);
+        const id = new ImageData(new Uint8ClampedArray(buffer), rw, rh);
+        rctx.putImageData(id, 0, 0);
+        showAnimProgress(i + 1, totalFrames);
+        const target = startedAt + ((i + 1) / fps) * 1000;
+        const wait = target - performance.now();
+        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(T[currentLang].animFailedToast);
+    }
+    recorder.stop();
+    await stopped;
+
+    animRenderModal.hidden = true;
+    saveBtn.disabled = false;
+    saveBtn.textContent = prevText;
+
+    if (animCancelRequested || chunks.length === 0) return;
+    const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+    const filename = `inversion.${ext}`;
+    const file = new File([blob], filename, { type: blob.type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Inverted Animation' });
+        showToast(T[currentLang].animDoneToast);
+        return;
+      } catch (err) {
+        if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a2 = document.createElement('a');
+    a2.href = url; a2.download = filename;
+    document.body.appendChild(a2); a2.click(); a2.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast(T[currentLang].animDoneToast);
+  }
+
+  animCancelBtn.addEventListener('click', () => { animCancelRequested = true; });
 
   const view = { scale: 1, tx: 0, ty: 0 };
   const MIN_SCALE = 0.2;
