@@ -1,52 +1,58 @@
 # Applied Inversion
 
-A browser-based image **inversion** tool. Upload a photo, pick the center and radius of an inversion circle, and watch the planar inversion of the image render in real time.
+A browser-based image **inversion** tool. Upload a photo, pick the center and radius of an inversion circle, and watch the planar inversion render in real time. Compose multiple circles for a full Möbius transformation, and use the built-in visualizations to see the group structure and even Apollonian-style fractals that fall out of it.
 
 > **Inversion** — Given a point *O* and a radius *r* in the plane, every point *P* (≠ *O*) is mapped to the point *Q* on the ray *OP* that satisfies *OP · OQ = r²*.
 
 🇰🇷 한국어 README는 [README.md](./README.md)를 참고하세요.
 
+**Version 0.3** — see [CHANGELOG.md](./CHANGELOG.md) for per-version changes.
+
 ---
 
-## ✨ Features
+## ✨ Features at a glance
 
 ### Core
-- 🖼 **Image upload** — pick a file or click/tap the empty drop area
-- 🎯 **Inversion-circle controls**
-  - Click/tap the canvas to jump the center
-  - Drag the center to reposition, drag the dashed edge to resize
-  - Type center X/Y (% of width/height) and radius (px) by hand
-- ⚡ **Live result** — Web Worker + OffscreenCanvas keep the main thread responsive
-- 🔍 **Zoom & pan on the result canvas**
-  - Desktop: wheel zoom around the cursor, drag to pan, double-click to reset
-  - Mobile: pinch zoom, one-finger drag, double-tap to reset
+- 🖼 **Image upload** — file picker, click/tap the empty drop area, drag-and-drop anywhere on the page, or Ctrl/⌘+V from clipboard
+- 🎯 **Inversion circle controls** — click/tap, drag, or type numbers. Drag inside the active circle pans it, drag the dashed edge resizes (cursor rotates with angle)
+- 🔁 **Multiple inversion circles** — compose σ_N ∘ … ∘ σ_1, with an active indicator and number labels
+- ⚡ **Real-time result** rendered in a Web Worker so the main thread stays responsive
+- 🔍 **Zoom & pan on the result canvas** — wheel/pinch, drag, double-click/double-tap to reset, automatic hi-res re-render once the view settles
 
-### Advanced options
-- 🎨 **Undefined-region fill** — black / white / custom color / transparent / **edge clamp** (sample the nearest in-bounds source pixel)
-- 🪡 **Sampling** — Nearest (fast) or **Bilinear** (smooth, default)
-- 💾 **Save at original resolution** — the preview is capped at 900px for speed, but exports re-render at the full source resolution
-- 📐 **Grid overlay** — draws a fixed white Cartesian grid on the source and its inverse image (circles through the inversion center) on the result. The grid pitch is configurable.
+### Advanced options (organized into three sections)
+**Image**
+- Strength slider — linear blend between the original and the full inversion
+- Fill — black / white / custom / transparent / **edge clamp** (default)
+- Sampling — Nearest / **Bilinear** (default)
+
+**Visualization**
+- Grid overlay — the source's straight grid drawn on the result through the full composed transformation
+- Group exploration — with exactly two circles, classifies the composition as Elliptic / Parabolic / Hyperbolic, draws fixed points, axis, and seed orbits
+
+**I/O**
+- Presets — save up to five named configurations to `localStorage`, with JSON export / import for backup or sharing
+- Save format — PNG / JPEG / WEBP
+- Save at original resolution — re-render from the full source instead of the on-screen preview
 
 ### Save / share
-- 💾 **Save** as PNG / JPEG / WEBP
-  - On mobile, the Web Share API routes the image to "Save to Photos / 사진에 저장"
-- 📤 **Share to Bluesky / X / Threads / Instagram / device / clipboard link**
-  - Bluesky, X, and Threads open their compose view in a new tab (or app, via universal links) with the post text prefilled; the rendered image is copied to the clipboard in the background so you can paste it
-  - On mobile with Web Share, the OS share sheet opens directly
-  - An "Include current settings" toggle decides whether the URL contains the configuration hash
+- 💾 PNG / JPEG / WEBP export; mobile routes through the Web Share sheet to the Photos library
+- 📤 Share buttons — Bluesky · X · Threads · Instagram · device share · copy link
+- 🌐 **URL hash** — the full configuration is encoded in `#…`, so the URL is a shareable composition link
+- 💽 **Refresh recovery** — last image in IndexedDB, settings mirrored to localStorage
 
-### Persistence
-- 🌐 **URL hash** — every setting (center as %, radius as % of the shorter side, sampling, fill mode, grid, zoom & pan, language) is encoded in `#…`. Copy the URL to share the exact composition.
-- 💽 **Refresh recovery** — the last image is stored in IndexedDB and the settings mirror to localStorage. Reload and it all comes back.
-- 🌏 **Korean / English toggle** — header selector, remembered in localStorage
+### Other
+- 🌏 Korean / English language toggle
+- ⏪ Undo / Redo (Ctrl/⌘ Z, Ctrl/⌘ ⇧ Z)
+- 📱 Installable PWA (offline-capable)
+- ⓘ Info modals on every option and beside the page title explain the math and the meaning of each visual element
 
 ---
 
 ## 🚀 Getting started
 
-No build, no install — it's a single static HTML file.
+It's a single static HTML file — no build step.
 
-### 1. Open the file directly
+### 1. Open directly
 Clone the repo and open `index.html` in your browser.
 
 ### 2. Local server (recommended)
@@ -58,40 +64,40 @@ python3 -m http.server 8000
 ```
 Then visit `http://localhost:8000/`.
 
-> Web Share, image clipboard, and "save to photos" only work over **HTTPS or localhost**.
+> Web Share, image clipboard, and "save to Photos" only work on **HTTPS or localhost**.
 
 ### 3. GitHub Pages
-In the repo's **Settings → Pages**, deploy the desired branch for a public URL.
+Repo **Settings → Pages**, pick a branch, and the public URL appears in a minute.
 
 ---
 
 ## 📐 The math
 
-Given the inversion center *O = (cx, cy)* and radius *r*, the source coordinate for an output pixel *Q = (x, y)* is
+Given center *O = (cx, cy)* and radius *r*, the source coordinate for an output pixel *Q = (x, y)* is
 
 ```
 d² = (x - cx)² + (y - cy)²
 P  = O + (Q - O) · (r² / d²)
 ```
 
-- If *d²* is essentially zero, the source point lies at infinity → undefined region.
-- If *P* lands outside the original image bounds, it's likewise undefined (or clamped to the nearest edge pixel).
-- Otherwise, the pixel at *P* is sampled with bilinear or nearest-neighbor.
+- *d² ≈ 0* (close to the center): source goes to infinity → undefined region
+- *P* outside the image: also undefined (or clamped to the edge)
+- Otherwise: sample at *P* via Bilinear or Nearest
 
-Points on the circle (*d = r*) are fixed; the inside and outside of the circle are swapped.
+Composing N circles applies N inversions in sequence; for N = 2 the result is a general Möbius transformation, classified as Elliptic / Parabolic / Hyperbolic by how the two circles intersect (or don't).
 
-**Inverse of a grid line**: a horizontal line `y = b` with `b ≠ cy` becomes a circle through the inversion center — center `(cx, cy + r²/(2(b - cy)))`, radius `r²/(2|b - cy|)`. Lines passing through the center map to themselves.
+**Inverse of a grid line**: A horizontal line `y = b` with `b ≠ cy` maps to the circle through the inversion center with center `(cx, cy + r²/(2(b-cy)))` and radius `r²/(2|b-cy|)`. Lines through the center map to themselves.
+
+Detailed math is available behind the ⓘ next to the page title and beside each advanced option.
 
 ---
 
 ## 🛠 Tips
 
-- **Fine tuning**: drag with the mouse to get close, then nudge the X% / Y% / radius inputs for precision.
-- **Save formats**:
-  - For transparency, use PNG or WEBP. JPEG has no alpha channel, so it's composited on a white background automatically.
-  - iOS only accepts PNG / JPEG / HEIC into the Photos library; WEBP shares will fall through to a Files save.
-- **Performance**: the working preview is capped at 900px on the longer side (`MAX_DIM = 900`); save and share re-render at the original resolution.
-- **Sharing**: Bluesky / X / Threads open with the text prefilled, so you only need to paste the image (Ctrl/⌘ V).
+- **Fine tuning**: use the mouse/touch to get close, then dial in X% / Y% / radius numerically
+- **Save formats**: PNG or WEBP preserves alpha; JPEG composites onto white. iOS Photos library only accepts PNG / JPEG / HEIC (WEBP will go through Files instead).
+- **Presets**: storing a preset captures the composition (% positions), not the pixels, so the same composition applies to any image
+- **Share links**: copying the URL lets a recipient open the same composition; they upload their own image
 
 ---
 
@@ -99,12 +105,22 @@ Points on the circle (*d = r*) are fixed; the inside and outside of the circle a
 
 ```
 applied-inversion/
-├── index.html      # single-page HTML + CSS + JS
-├── README.md       # Korean
-└── README.en.md    # English (this file)
+├── index.html             # the whole app
+├── sw.js                  # service worker (PWA)
+├── manifest.webmanifest
+├── icons/                 # PWA icons + generate.py
+├── CHANGELOG.md           # per-version changes
+├── README.md              # Korean
+└── README.en.md           # English (this file)
 ```
 
-Zero dependencies — no external libraries, no package manager, no build step.
+No dependencies — no package manager, no build tooling, no external scripts.
+
+---
+
+## 👤 Author
+
+[udaque](https://bsky.app/profile/udaqueness.blog)
 
 ---
 
