@@ -511,6 +511,7 @@
           <label for="strengthInput" data-i18n="strength">강도</label>
           <input type="range" id="strengthInput" min="0" max="100" step="1" value="100">
           <span id="strengthValue">100%</span>
+          <button type="button" class="info-icon" id="strengthInfo" data-i18n-title="info" title="설명">i</button>
         </div>
         <div class="fill-row">
           <label for="fillMode" data-i18n="fillLabel">정보 없는 영역</label>
@@ -835,6 +836,18 @@
       typeElliptic: 'Elliptic',
       typeParabolic: 'Parabolic',
       typeHyperbolic: 'Hyperbolic',
+      strengthExplain: `
+        <h3>강도</h3>
+        <p>완전한 반전과 원본 사이를 보간하는 강도 <code>t</code> 값입니다. 출력 픽셀 Q에 대해 원본 좌표 P는 다음과 같이 계산됩니다.</p>
+        <p style="text-align:center; font-family: Georgia, serif;"><code>P = (1 − t) · Q + t · σ(Q)</code></p>
+        <p>여기서 <code>σ(Q)</code>는 완전 반전 결과입니다.</p>
+        <ul>
+          <li><b>t = 0</b> — P = Q. 원본 그대로 (변형 없음).</li>
+          <li><b>t = 1</b> (기본) — P = σ(Q). 완전한 반전 변환.</li>
+          <li><b>그 사이</b> — 좌표 단위의 선형 보간. 반전원 위의 점 (<code>d = r</code>)은 어떤 t에서도 자기 자신으로 유지됩니다.</li>
+        </ul>
+        <p>여러 반전원이 있을 때는 모든 원의 합성 좌표와 원래 좌표를 보간합니다. 반전 효과를 미묘하게 적용하고 싶을 때 유용해요.</p>
+      `,
       fillExplain: `
         <h3>정보 없는 영역 처리</h3>
         <p>반전(inversion)에서 결과 픽셀 Q의 원본 좌표 P는 |OP|·|OQ| = r²로 결정됩니다. Q가 중심 O에 매우 가까우면 |OP|는 매우 커져서 원본 이미지 바깥으로 나가게 되고, 그 픽셀은 원본에 해당하는 정보가 없는 영역이 됩니다.</p>
@@ -949,6 +962,18 @@
       typeElliptic: 'Elliptic',
       typeParabolic: 'Parabolic',
       typeHyperbolic: 'Hyperbolic',
+      strengthExplain: `
+        <h3>Strength</h3>
+        <p>Interpolates between the unmodified image and a full inversion. For each output pixel Q the source coordinate P is computed as</p>
+        <p style="text-align:center; font-family: Georgia, serif;"><code>P = (1 − t) · Q + t · σ(Q)</code></p>
+        <p>where <code>σ(Q)</code> is the full inversion target.</p>
+        <ul>
+          <li><b>t = 0</b> — P = Q. The original image, unchanged.</li>
+          <li><b>t = 1</b> (default) — P = σ(Q). The complete inversion.</li>
+          <li><b>In between</b> — a linear blend of the sample coordinate. Points on the inversion circle (<code>d = r</code>) stay fixed at every t.</li>
+        </ul>
+        <p>With multiple inversion circles the slider blends between Q and the fully composed source coordinate, useful for subtle versions of the effect.</p>
+      `,
       fillExplain: `
         <h3>Undefined region fill</h3>
         <p>For an output pixel Q the source coordinate P satisfies |OP|·|OQ| = r². When Q is close to the center O the corresponding |OP| blows up and P lands outside the source image, so that output pixel has no real source data.</p>
@@ -2131,6 +2156,7 @@
   }
   function closeInfoModal() { infoModal.hidden = true; }
   groupVizInfoBtn.addEventListener('click', () => showInfoModal('groupVizExplain'));
+  document.getElementById('strengthInfo').addEventListener('click', () => showInfoModal('strengthExplain'));
   document.getElementById('fillInfo').addEventListener('click', () => showInfoModal('fillExplain'));
   document.getElementById('samplingInfo').addEventListener('click', () => showInfoModal('samplingExplain'));
   document.getElementById('saveInfo').addEventListener('click', () => showInfoModal('saveExplain'));
