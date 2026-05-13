@@ -1,5 +1,5 @@
 // Bump this when shipping changes to force clients to refresh the cache.
-const CACHE = 'applied-inversion-v2';
+const CACHE = 'applied-inversion-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const ASSETS = [
 const EXTERNAL_ALLOWED = [
   'https://cdn.jsdelivr.net/npm/mp4-muxer@',
   'https://cdn.jsdelivr.net/npm/webm-muxer@',
+  'https://cdn.jsdelivr.net/npm/gifenc@',
 ];
 
 self.addEventListener('install', (event) => {

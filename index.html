@@ -790,6 +790,7 @@
           <select id="animFormat" class="anim-select">
             <option value="mp4" selected>MP4</option>
             <option value="webm">WebM</option>
+            <option value="gif">GIF</option>
           </select>
         </label>
         <label class="anim-field"><span data-i18n="animCodec">코덱</span>
@@ -1234,8 +1235,14 @@
           <li><b>반전원 반지름은 최대 1000 px까지</b> 입니다.</li>
           <li>저장 해상도는 미리보기 기준입니다 (긴 변 최대 900 px).</li>
         </ul>
+        <h4>포맷</h4>
+        <ul>
+          <li><b>MP4</b> — H.264. 가장 보편적. iOS Photos 호환.</li>
+          <li><b>WebM</b> — VP9/VP8. 작고 효율적. 일부 메신저/iOS Photos 미호환.</li>
+          <li><b>GIF</b> — 256색 인덱스 영상. 메신저·이미지 위주 SNS 호환성이 좋지만 파일이 큼. 길이가 길고 FPS가 높으면 수십 MB 이상이 될 수 있어요.</li>
+        </ul>
         <h4>코덱</h4>
-        <p>포맷에 맞는 코덱 중에서 직접 고를 수 있습니다. <b>자동</b>은 가장 호환되는 코덱을 자동으로 선택. iOS Safari 등 일부 환경에서는 한 코덱이 안 되면 다른 코덱이 동작할 수 있으니, 저장이 안 되면 코덱을 바꿔서 시도해 보세요.</p>
+        <p>MP4/WebM의 경우 포맷에 맞는 코덱 중에서 직접 고를 수 있습니다 (GIF는 256색 고정). <b>자동</b>은 가장 호환되는 코덱을 자동으로 선택. iOS Safari 등 일부 환경에서는 한 코덱이 안 되면 다른 코덱이 동작할 수 있으니, 저장이 안 되면 코덱을 바꿔서 시도해 보세요.</p>
       `,
       animFormatExplain: `
         <h3>애니메이션 포맷</h3>
@@ -1485,8 +1492,14 @@
           <li><b>Inversion-circle radius is capped at 1000 px.</b></li>
           <li>v1 renders at the current preview resolution (≤ 900 px on the longer side).</li>
         </ul>
+        <h4>Format</h4>
+        <ul>
+          <li><b>MP4</b> — H.264. The most universal; iOS Photos compatible.</li>
+          <li><b>WebM</b> — VP9/VP8. Smaller files, but some messengers and iOS Photos don't accept it.</li>
+          <li><b>GIF</b> — 256-color indexed animation. Great compatibility for messengers and image-oriented social platforms, but files get large quickly with longer durations or high frame rates.</li>
+        </ul>
         <h4>Codec</h4>
-        <p>You can pick a specific codec for the chosen format, or leave it on <b>Auto</b> to use the most compatible one. On some browsers (notably iOS Safari) one codec may fail where another works, so try a different codec if a save fails.</p>
+        <p>For MP4 and WebM you can pick a specific codec (GIF is always 256-color). <b>Auto</b> picks the most compatible one supported by the browser. On some browsers (notably iOS Safari) one codec may fail where another works, so try a different codec if a save fails.</p>
       `,
       animFormatExplain: `
         <h3>Animation format</h3>
@@ -3493,6 +3506,12 @@
   ];
   function updateCodecOptions() {
     const fmt = animFormatSelect.value;
+    const codecLabel = animCodecSelect.closest('.anim-field');
+    if (fmt === 'gif') {
+      if (codecLabel) codecLabel.style.display = 'none';
+      return;
+    }
+    if (codecLabel) codecLabel.style.display = '';
     const codecs = fmt === 'mp4' ? MP4_CODECS : WEBM_CODECS;
     const prev = animCodecSelect.value;
     animCodecSelect.innerHTML = '';
@@ -3674,6 +3693,7 @@
 
   let _mp4MuxerLib = null;
   let _webmMuxerLib = null;
+  let _gifLib = null;
   async function loadMuxerLib(format) {
     if (format === 'mp4') {
       if (!_mp4MuxerLib) {
@@ -3686,6 +3706,12 @@
     }
     return _webmMuxerLib;
   }
+  async function loadGifLib() {
+    if (!_gifLib) {
+      _gifLib = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js');
+    }
+    return _gifLib;
+  }
 
   async function renderAnimation() {
     if (!worker) {
@@ -3695,6 +3721,15 @@
     const a = state.animation;
     if (!a || !a.first || !a.last) return;
     a[a.editingFrame] = captureFrameState();
+    if (animFormatSelect.value === 'gif') {
+      try {
+        await renderAnimationGif();
+      } catch (e) {
+        console.error('GIF render failed', e);
+        showToast(T[currentLang].animFailedToast);
+      }
+      return;
+    }
     if (canUseWebCodecs()) {
       try {
         await renderAnimationWebCodecs();
@@ -3704,6 +3739,70 @@
       }
     }
     await renderAnimationMediaRecorder();
+  }
+
+  async function renderAnimationGif() {
+    const a = state.animation;
+    const dur = Math.max(0.1, Math.min(4, parseFloat(animDurationInput.value) || 3));
+    const fps = Math.max(1, Math.min(60, parseInt(animFpsInput.value, 10) || 60));
+    const totalFrames = Math.max(1, Math.round(dur * fps));
+    const w = state.previewW;
+    const h = state.previewH;
+    const frameDelayMs = Math.max(20, Math.round(1000 / fps));
+
+    const gifenc = await loadGifLib();
+    const encoder = gifenc.GIFEncoder();
+
+    animCancelRequested = false;
+    animRenderModal.hidden = false;
+    animProgressFill.style.width = '0%';
+    animProgressText.textContent = T[currentLang].animFrameProgress(0, totalFrames);
+    saveAnimBtn.disabled = true;
+
+    let errored = false;
+    try {
+      for (let i = 0; i < totalFrames; i++) {
+        if (animCancelRequested) break;
+        const t = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+        const params = buildFrameParams(t);
+        const { buffer, w: rw, h: rh } = await renderFrameOnce(params);
+        const rgba = new Uint8Array(buffer);
+        const palette = gifenc.quantize(rgba, 256);
+        const index = gifenc.applyPalette(rgba, palette);
+        encoder.writeFrame(index, rw, rh, { palette, delay: frameDelayMs });
+        showAnimProgress(i + 1, totalFrames);
+        await new Promise((r) => requestAnimationFrame(r));
+      }
+      encoder.finish();
+    } catch (err) {
+      errored = true;
+      console.error(err);
+      showToast(T[currentLang].animFailedToast);
+    }
+
+    animRenderModal.hidden = true;
+    saveAnimBtn.disabled = false;
+    if (errored || animCancelRequested) return;
+
+    const bytes = encoder.bytes();
+    const blob = new Blob([bytes], { type: 'image/gif' });
+    const filename = `inversion.gif`;
+    const file = new File([blob], filename, { type: 'image/gif' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Inverted Animation' });
+        showToast(T[currentLang].animDoneToast);
+        return;
+      } catch (err) {
+        if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a2 = document.createElement('a');
+    a2.href = url; a2.download = filename;
+    document.body.appendChild(a2); a2.click(); a2.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast(T[currentLang].animDoneToast);
   }
 
   async function renderAnimationWebCodecs() {
