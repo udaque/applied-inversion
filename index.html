@@ -4287,9 +4287,10 @@
     pipToggleBtn.dataset.i18nTitle = key;
     pipToggleBtn.title = (T[currentLang] && T[currentLang][key]) || pipToggleBtn.title;
     pipToggleBtn.textContent = expanded ? '×' : '⤢';
-    // The wrap dimensions change drastically — refit so the result is visible.
+    // Wrap dimensions just changed — re-render at the new size but preserve
+    // any zoom/pan the user did while expanded.
     requestAnimationFrame(() => {
-      resetView();
+      scheduleHiResRender();
     });
   }
   const PIP_ANIM_MS = 220;
