@@ -280,6 +280,18 @@
     letter-spacing: 0.05em;
     white-space: nowrap;
   }
+  .section-heading {
+    grid-column: 1 / -1;
+    margin: 12px 0 -2px;
+    padding-bottom: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-heading:first-child { margin-top: 0; }
   .option-ctrl {
     display: flex;
     align-items: center;
@@ -654,15 +666,7 @@
     <details id="advanced">
       <summary data-i18n="advanced">고급 옵션</summary>
       <div class="advanced-body">
-        <span class="option-label" data-i18n="presetsLabel">프리셋</span>
-        <button type="button" class="info-icon" id="presetsInfo" data-i18n-title="info" title="설명">i</button>
-        <div class="option-ctrl preset-ctrl">
-          <div class="preset-slots" id="presetSlots"></div>
-          <button type="button" id="savePresetBtn" data-i18n="savePreset">현재 저장…</button>
-          <button type="button" id="exportPresetsBtn" data-i18n-title="exportPresets" title="내보내기">⤓</button>
-          <button type="button" id="importPresetsBtn" data-i18n-title="importPresets" title="가져오기">⤒</button>
-          <input type="file" id="importPresetsFile" accept=".json,application/json" hidden>
-        </div>
+        <h4 class="section-heading" data-i18n="sectionImage">이미지</h4>
 
         <label class="option-label" for="strengthInput" data-i18n="strength">강도</label>
         <button type="button" class="info-icon" id="strengthInfo" data-i18n-title="info" title="설명">i</button>
@@ -691,6 +695,34 @@
           <label class="radio-label"><input type="radio" name="sampling" value="bilinear" checked> <span data-i18n="samplingBilinear">Bilinear (부드러움)</span></label>
         </div>
 
+        <h4 class="section-heading" data-i18n="sectionViz">보조 시각화</h4>
+
+        <span class="option-label" data-i18n="gridOverlay">그리드 오버레이</span>
+        <button type="button" class="info-icon" id="gridInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <input type="checkbox" id="gridOverlay">
+          <span style="font-size:12px; color:var(--muted)" data-i18n="gridSpacing">간격(px)</span>
+          <input type="number" id="gridSpacing" min="2" step="1" style="width:70px; background:#0a0d11; border:1px solid var(--border); color:var(--text); padding:4px 6px; border-radius:5px; font-size:13px;">
+        </div>
+
+        <span class="option-label" data-i18n="groupViz">군 시각화</span>
+        <button type="button" class="info-icon" id="groupVizInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <input type="checkbox" id="groupViz">
+        </div>
+
+        <h4 class="section-heading" data-i18n="sectionIO">입출력</h4>
+
+        <span class="option-label" data-i18n="presetsLabel">프리셋</span>
+        <button type="button" class="info-icon" id="presetsInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl preset-ctrl">
+          <div class="preset-slots" id="presetSlots"></div>
+          <button type="button" id="savePresetBtn" data-i18n="savePreset">현재 저장…</button>
+          <button type="button" id="exportPresetsBtn" data-i18n-title="exportPresets" title="내보내기">⤓</button>
+          <button type="button" id="importPresetsBtn" data-i18n-title="importPresets" title="가져오기">⤒</button>
+          <input type="file" id="importPresetsFile" accept=".json,application/json" hidden>
+        </div>
+
         <label class="option-label" for="formatSelect" data-i18n="saveFormat">저장 포맷</label>
         <button type="button" class="info-icon" id="saveInfo" data-i18n-title="info" title="설명">i</button>
         <div class="option-ctrl">
@@ -705,20 +737,6 @@
         <button type="button" class="info-icon" id="saveFullResInfo" data-i18n-title="info" title="설명">i</button>
         <div class="option-ctrl">
           <input type="checkbox" id="saveFullRes" checked>
-        </div>
-
-        <span class="option-label" data-i18n="gridOverlay">그리드 오버레이</span>
-        <button type="button" class="info-icon" id="gridInfo" data-i18n-title="info" title="설명">i</button>
-        <div class="option-ctrl">
-          <input type="checkbox" id="gridOverlay">
-          <span style="font-size:12px; color:var(--muted)" data-i18n="gridSpacing">간격(px)</span>
-          <input type="number" id="gridSpacing" min="2" step="1" style="width:70px; background:#0a0d11; border:1px solid var(--border); color:var(--text); padding:4px 6px; border-radius:5px; font-size:13px;">
-        </div>
-
-        <span class="option-label" data-i18n="groupViz">군 시각화</span>
-        <button type="button" class="info-icon" id="groupVizInfo" data-i18n-title="info" title="설명">i</button>
-        <div class="option-ctrl">
-          <input type="checkbox" id="groupViz">
         </div>
       </div>
     </details>
@@ -986,6 +1004,9 @@
       radius: '반지름 (px, 미리보기 기준)',
       strength: '강도',
       advanced: '고급 옵션',
+      sectionImage: '이미지',
+      sectionViz: '보조 시각화',
+      sectionIO: '입출력',
       fillLabel: '채우기',
       fillBlack: '검정',
       fillWhite: '흰색',
@@ -1165,6 +1186,9 @@
       radius: 'Radius (px, preview scale)',
       strength: 'Strength',
       advanced: 'Advanced options',
+      sectionImage: 'Image',
+      sectionViz: 'Visualization',
+      sectionIO: 'I/O',
       fillLabel: 'Fill',
       fillBlack: 'Black',
       fillWhite: 'White',
