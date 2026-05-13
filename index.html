@@ -417,6 +417,87 @@
   .modal-body ul { padding-left: 18px; margin: 0; }
   .modal-body code { background: rgba(255,255,255,0.06); padding: 1px 4px; border-radius: 3px; font-size: 12px; }
   .modal-body b { color: var(--accent); }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+  .modal-actions button.primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .muted-label {
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .preset-row { gap: 6px; flex-wrap: wrap; }
+  .preset-slots {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .preset-slots .slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    font-size: 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    max-width: 130px;
+    font-family: inherit;
+  }
+  .preset-slots .slot.empty {
+    color: var(--muted);
+    border-style: dashed;
+  }
+  .preset-slots .slot:hover { border-color: var(--accent); }
+  .preset-slots .slot .name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preset-slots .slot .del {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0 2px;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .preset-slots .slot .del:hover { color: #f88; }
+  .slot-radio-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .slot-radio-list label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .slot-radio-list label:hover { border-color: var(--accent); }
+  .slot-radio-list .overwrite {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 11px;
+  }
   .toast {
     position: fixed;
     bottom: 24px;
@@ -473,6 +554,24 @@
   <div class="modal-card">
     <button class="modal-close" id="infoModalClose" aria-label="Close">×</button>
     <div class="modal-body" id="infoModalBody"></div>
+  </div>
+</div>
+<div class="modal" id="savePresetModal" hidden>
+  <div class="modal-card" style="max-width: 460px;">
+    <button class="modal-close" id="savePresetClose" aria-label="Close">×</button>
+    <div class="modal-body">
+      <h3 data-i18n="savePresetTitle">프리셋 저장</h3>
+      <label style="display:block; margin: 10px 0;">
+        <span data-i18n="presetName" style="color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">이름</span>
+        <input type="text" id="savePresetName" maxlength="40" style="display:block; width:100%; margin-top:4px; background:#0a0d11; border:1px solid var(--border); color:var(--text); padding:6px 8px; border-radius:5px; font-size:13px; font-family: inherit;">
+      </label>
+      <div style="color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;" data-i18n="presetSlot">슬롯</div>
+      <div id="savePresetSlotList" class="slot-radio-list"></div>
+      <div class="modal-actions">
+        <button type="button" id="savePresetCancel" data-i18n="cancel">취소</button>
+        <button type="button" id="savePresetConfirm" class="primary" data-i18n="save">저장</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -555,6 +654,15 @@
         <div class="check-row">
           <label><input type="checkbox" id="groupViz"> <span data-i18n="groupViz">군 시각화 (2 원)</span></label>
           <button type="button" class="info-icon" id="groupVizInfo" data-i18n-title="info" title="설명">i</button>
+        </div>
+        <div class="check-row preset-row">
+          <span class="muted-label" data-i18n="presetsLabel">프리셋:</span>
+          <div class="preset-slots" id="presetSlots"></div>
+          <button type="button" id="savePresetBtn" data-i18n="savePreset">현재 저장…</button>
+          <button type="button" id="exportPresetsBtn" data-i18n-title="exportPresets" title="내보내기">⤓</button>
+          <button type="button" id="importPresetsBtn" data-i18n-title="importPresets" title="가져오기">⤒</button>
+          <input type="file" id="importPresetsFile" accept=".json,application/json" hidden>
+          <button type="button" class="info-icon" id="presetsInfo" data-i18n-title="info" title="설명">i</button>
         </div>
       </div>
     </details>
@@ -907,6 +1015,38 @@
         <p>반전 중심을 지나는 직선은 변환 후에도 자기 자신이지만, 나머지 직선은 중심을 지나는 원으로 매핑됩니다. 여러 원의 합성에서는 더 복잡한 곡선이 나타납니다 — 변환의 기하학적 효과를 한눈에 보는 도구로 좋습니다.</p>
         <p>간격은 픽셀 단위이며, 좌측 격자의 가로·세로 간격을 결정합니다.</p>
       `,
+      presetsLabel: '프리셋:',
+      savePreset: '현재 저장…',
+      exportPresets: '프리셋 내보내기 (JSON)',
+      importPresets: '프리셋 가져오기 (JSON)',
+      emptySlot: '비어있음',
+      savePresetTitle: '프리셋 저장',
+      presetName: '이름',
+      presetSlot: '슬롯',
+      cancel: '취소',
+      save: '저장',
+      overwriteMark: '덮어쓰기',
+      deletePresetConfirm: '이 프리셋을 삭제할까요?',
+      importPresetsConfirm: '기존 프리셋을 가져온 데이터로 교체할까요?',
+      importPresetsBad: '올바른 프리셋 파일이 아닙니다.',
+      presetSavedToast: '프리셋을 저장했어요.',
+      presetLoadedToast: '프리셋을 불러왔어요.',
+      presetsExplain: `
+        <h3>프리셋</h3>
+        <p>현재 설정(반전원 배치, 강도, 채우기, 샘플링, 그리드 옵션)을 슬롯에 저장해 두고 한 번에 다시 불러올 수 있게 합니다. 최대 5개. <b>이미지 자체는 저장하지 않으니</b> 어떤 이미지에든 같은 "구도"로 적용됩니다.</p>
+        <h4>슬롯 사용</h4>
+        <ul>
+          <li><b>빈 슬롯 클릭</b> — 저장 모달이 열리며 그 슬롯이 미리 선택됩니다.</li>
+          <li><b>채워진 슬롯 클릭</b> — 그 프리셋을 현재 상태로 불러옵니다.</li>
+          <li><b>슬롯의 ✕</b> — 그 슬롯을 비웁니다 (확인 후).</li>
+          <li><b>현재 저장…</b> — 어느 슬롯에 저장할지 모달에서 고릅니다.</li>
+        </ul>
+        <h4>저장 위치</h4>
+        <p>브라우저의 <code>localStorage</code>에 저장됩니다. 같은 기기·같은 브라우저·같은 도메인이면 영구히 보존돼요. 시크릿/프라이빗 창은 창을 닫을 때 사라지고, iOS Safari는 7일간 미방문 시 자동 삭제될 수 있습니다.</p>
+        <h4>내보내기 / 가져오기</h4>
+        <p>⤓ 버튼으로 JSON 파일로 내려받고, ⤒ 버튼으로 가져옵니다. 기기 간 백업이나 다른 사람과 공유에 유용해요. 가져오기는 기존 프리셋을 덮어쓰니 주의하세요.</p>
+        <p style="margin-top:14px; color:var(--muted); font-size:12px;">좌표·반지름·그리드 간격은 이미지에 의존하지 않도록 비율(%)로 저장됩니다.</p>
+      `,
       groupVizExplain: `
         <h3>군 시각화 — Möbius 변환의 구조</h3>
         <p>반전 원이 두 개일 때, 합성 <code>σ₂ ∘ σ₁</code> 은 한 개의 <b>Möbius 변환</b>입니다 (방향 보존). 두 원의 상대 위치에 따라 정확히 세 가지 종류 중 하나가 됩니다.</p>
@@ -1053,6 +1193,38 @@
         <p>A line through the inversion center maps to itself; every other straight line maps to a circle through the inversion center. With multiple circles the curves get richer. It's a quick way to see the geometric effect of the transformation.</p>
         <p>The spacing is in source pixels and controls both the horizontal and vertical pitch on the left canvas.</p>
       `,
+      presetsLabel: 'Presets:',
+      savePreset: 'Save current…',
+      exportPresets: 'Export presets (JSON)',
+      importPresets: 'Import presets (JSON)',
+      emptySlot: 'empty',
+      savePresetTitle: 'Save preset',
+      presetName: 'Name',
+      presetSlot: 'Slot',
+      cancel: 'Cancel',
+      save: 'Save',
+      overwriteMark: 'overwrite',
+      deletePresetConfirm: 'Delete this preset?',
+      importPresetsConfirm: 'Replace existing presets with the imported ones?',
+      importPresetsBad: 'That is not a valid presets file.',
+      presetSavedToast: 'Preset saved.',
+      presetLoadedToast: 'Preset loaded.',
+      presetsExplain: `
+        <h3>Presets</h3>
+        <p>Save the current configuration (inversion circles, strength, fill, sampling, grid options) into a slot and reload it later in one click. Up to five slots. <b>The image itself is not saved</b>, so the same "composition" can be applied to any image.</p>
+        <h4>Using the slots</h4>
+        <ul>
+          <li><b>Click an empty slot</b> — opens the save dialog with that slot preselected.</li>
+          <li><b>Click a filled slot</b> — loads that preset into the current state.</li>
+          <li><b>The ✕ on a slot</b> — clears it (after confirmation).</li>
+          <li><b>Save current…</b> — pick the destination slot in the dialog.</li>
+        </ul>
+        <h4>Where presets live</h4>
+        <p>Stored in the browser's <code>localStorage</code>. On the same device, same browser, same origin they persist indefinitely. Private/incognito windows lose them when the window closes, and iOS Safari may clear them after 7 days without a visit.</p>
+        <h4>Export / Import</h4>
+        <p>The ⤓ button downloads everything as a JSON file; ⤒ imports a JSON file you saved earlier. Useful for backing up or moving presets across devices. Importing replaces the existing presets, so confirm before doing so.</p>
+        <p style="margin-top:14px; color:var(--muted); font-size:12px;">Coordinates, radii, and grid spacing are stored as percentages so they work on any image.</p>
+      `,
       groupVizExplain: `
         <h3>Group exploration — anatomy of the Möbius transformation</h3>
         <p>With two inversion circles, their composition <code>σ₂ ∘ σ₁</code> is a single <b>Möbius transformation</b> (orientation-preserving). It falls into exactly one of three classes depending on how the two circles are positioned.</p>
@@ -1118,6 +1290,7 @@
       if (dict[key]) el.title = dict[key];
     });
     if (state.previewData) updateMeta();
+    if (typeof renderPresetSlots === 'function') renderPresetSlots();
   }
 
   function getHashParams() {
@@ -2256,6 +2429,257 @@
     scheduleHashWrite();
   });
   gridSpacing.addEventListener('change', pushSnapshot);
+
+  const PRESETS_KEY = 'presets';
+  const MAX_PRESETS = 5;
+  const presetSlotsEl = document.getElementById('presetSlots');
+  const savePresetBtn = document.getElementById('savePresetBtn');
+  const exportPresetsBtn = document.getElementById('exportPresetsBtn');
+  const importPresetsBtn = document.getElementById('importPresetsBtn');
+  const importPresetsFile = document.getElementById('importPresetsFile');
+  const presetsInfoBtn = document.getElementById('presetsInfo');
+  const savePresetModal = document.getElementById('savePresetModal');
+  const savePresetClose = document.getElementById('savePresetClose');
+  const savePresetCancel = document.getElementById('savePresetCancel');
+  const savePresetConfirm = document.getElementById('savePresetConfirm');
+  const savePresetName = document.getElementById('savePresetName');
+  const savePresetSlotList = document.getElementById('savePresetSlotList');
+
+  let presets = [];
+
+  function loadPresetsFromStorage() {
+    try {
+      const raw = localStorage.getItem(PRESETS_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr.slice(0, MAX_PRESETS);
+    } catch { return []; }
+  }
+  function savePresetsToStorage() {
+    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch {}
+  }
+  function ensurePresetsLength() {
+    while (presets.length < MAX_PRESETS) presets.push(null);
+    if (presets.length > MAX_PRESETS) presets.length = MAX_PRESETS;
+  }
+
+  function currentToPreset(name) {
+    if (!state.previewData) return null;
+    const minD = Math.min(state.previewW, state.previewH);
+    return {
+      name: name || '',
+      createdAt: Date.now(),
+      circles: state.circles.map((c) => ({
+        cxp: c.cx / state.previewW * 100,
+        cyp: c.cy / state.previewH * 100,
+        rp: c.r / minD * 100,
+      })),
+      activeIndex: state.activeIndex,
+      strength: state.strength,
+      fillMode: fillMode.value,
+      fillColor: fillColor.value,
+      sampling: getSamplingMode(),
+      gridOverlay: gridOverlay.checked,
+      gridSpacing: (parseFloat(gridSpacing.value) || 0) / minD * 100,
+    };
+  }
+
+  function applyPreset(p) {
+    if (!p) return;
+    if (!state.previewData) {
+      showToast(T[currentLang].toastNoImage);
+      return;
+    }
+    const minD = Math.min(state.previewW, state.previewH);
+    if (Array.isArray(p.circles) && p.circles.length) {
+      state.circles = p.circles.map((c) => ({
+        cx: Math.max(0, Math.min(state.previewW, (Number(c.cxp) || 50) / 100 * state.previewW)),
+        cy: Math.max(0, Math.min(state.previewH, (Number(c.cyp) || 50) / 100 * state.previewH)),
+        r: Math.max(1, (Number(c.rp) || 30) / 100 * minD),
+      }));
+      const ai = Number(p.activeIndex) || 0;
+      state.activeIndex = Math.max(0, Math.min(state.circles.length - 1, ai));
+    }
+    if (typeof p.strength === 'number') state.strength = Math.max(0, Math.min(1, p.strength));
+    if (p.fillMode && fillMode.querySelector(`option[value="${CSS.escape(p.fillMode)}"]`)) {
+      fillMode.value = p.fillMode;
+    }
+    if (p.fillColor && /^#[0-9a-fA-F]{6}$/.test(p.fillColor)) fillColor.value = p.fillColor;
+    if (p.sampling === 'nearest' || p.sampling === 'bilinear') {
+      document.querySelectorAll('input[name="sampling"]').forEach((r) => {
+        r.checked = r.value === p.sampling;
+      });
+    }
+    if (typeof p.gridOverlay === 'boolean') gridOverlay.checked = p.gridOverlay;
+    if (typeof p.gridSpacing === 'number' && p.gridSpacing > 0) {
+      gridSpacing.value = String(Math.max(2, Math.round(p.gridSpacing / 100 * minD)));
+    }
+    syncFillColorEnabled();
+    renderCircleList();
+    updateInputs();
+    updateMeta();
+    requestRender();
+    pushSnapshot();
+    showToast(T[currentLang].presetLoadedToast);
+  }
+
+  function renderPresetSlots() {
+    const dict = T[currentLang];
+    presetSlotsEl.innerHTML = '';
+    for (let i = 0; i < MAX_PRESETS; i++) {
+      const p = presets[i];
+      const slot = document.createElement('button');
+      slot.type = 'button';
+      slot.className = 'slot';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'name';
+      if (p) {
+        nameSpan.textContent = `${i + 1}. ${p.name || ('preset ' + (i + 1))}`;
+        slot.appendChild(nameSpan);
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'del';
+        del.textContent = '×';
+        del.title = dict.deletePresetConfirm || 'Delete';
+        del.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deletePresetAt(i);
+        });
+        slot.appendChild(del);
+        slot.addEventListener('click', () => applyPreset(p));
+      } else {
+        slot.classList.add('empty');
+        nameSpan.textContent = `${i + 1}. ${dict.emptySlot}`;
+        slot.appendChild(nameSpan);
+        slot.addEventListener('click', () => openSavePresetModal(i));
+      }
+      presetSlotsEl.appendChild(slot);
+    }
+  }
+
+  function deletePresetAt(i) {
+    if (!presets[i]) return;
+    if (!confirm(T[currentLang].deletePresetConfirm)) return;
+    presets[i] = null;
+    savePresetsToStorage();
+    renderPresetSlots();
+  }
+
+  function openSavePresetModal(presetIdx) {
+    const dict = T[currentLang];
+    if (!state.previewData) {
+      showToast(dict.toastNoImage);
+      return;
+    }
+    ensurePresetsLength();
+    let preferred = presetIdx;
+    if (preferred == null || preferred < 0 || preferred >= MAX_PRESETS) {
+      const firstEmpty = presets.findIndex((p) => !p);
+      preferred = firstEmpty >= 0 ? firstEmpty : 0;
+    }
+    savePresetName.value = (presets[preferred] && presets[preferred].name) || `preset ${preferred + 1}`;
+    savePresetSlotList.innerHTML = '';
+    for (let i = 0; i < MAX_PRESETS; i++) {
+      const label = document.createElement('label');
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'savePresetSlot';
+      radio.value = String(i);
+      if (i === preferred) radio.checked = true;
+      label.appendChild(radio);
+      const span = document.createElement('span');
+      const p = presets[i];
+      span.textContent = p ? `${i + 1}. ${p.name}` : `${i + 1}. ${dict.emptySlot}`;
+      label.appendChild(span);
+      if (p) {
+        const tag = document.createElement('span');
+        tag.className = 'overwrite';
+        tag.textContent = `(${dict.overwriteMark})`;
+        label.appendChild(tag);
+      }
+      savePresetSlotList.appendChild(label);
+    }
+    savePresetModal.hidden = false;
+    setTimeout(() => savePresetName.select(), 0);
+  }
+  function closeSavePresetModal() { savePresetModal.hidden = true; }
+
+  function confirmSavePreset() {
+    const checked = savePresetSlotList.querySelector('input[name="savePresetSlot"]:checked');
+    if (!checked) return;
+    const idx = parseInt(checked.value, 10);
+    if (!isFinite(idx) || idx < 0 || idx >= MAX_PRESETS) return;
+    const name = (savePresetName.value || '').trim() || `preset ${idx + 1}`;
+    const p = currentToPreset(name);
+    if (!p) return;
+    ensurePresetsLength();
+    presets[idx] = p;
+    savePresetsToStorage();
+    renderPresetSlots();
+    closeSavePresetModal();
+    showToast(T[currentLang].presetSavedToast);
+  }
+
+  function exportPresets() {
+    const data = { version: 1, presets };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inversion-presets-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function handleImportPresetsFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        const arr = parsed && Array.isArray(parsed.presets)
+          ? parsed.presets
+          : (Array.isArray(parsed) ? parsed : null);
+        if (!arr) throw new Error('bad');
+        if (!confirm(T[currentLang].importPresetsConfirm)) return;
+        presets = arr.slice(0, MAX_PRESETS).map((p) => {
+          if (!p || typeof p !== 'object') return null;
+          return p;
+        });
+        ensurePresetsLength();
+        savePresetsToStorage();
+        renderPresetSlots();
+      } catch {
+        alert(T[currentLang].importPresetsBad);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  savePresetBtn.addEventListener('click', () => openSavePresetModal(null));
+  exportPresetsBtn.addEventListener('click', exportPresets);
+  importPresetsBtn.addEventListener('click', () => importPresetsFile.click());
+  importPresetsFile.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) handleImportPresetsFile(f);
+    e.target.value = '';
+  });
+  presetsInfoBtn.addEventListener('click', () => showInfoModal('presetsExplain'));
+  savePresetClose.addEventListener('click', closeSavePresetModal);
+  savePresetCancel.addEventListener('click', closeSavePresetModal);
+  savePresetConfirm.addEventListener('click', confirmSavePreset);
+  savePresetModal.addEventListener('click', (e) => {
+    if (e.target === savePresetModal) closeSavePresetModal();
+  });
+  savePresetName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); confirmSavePreset(); }
+  });
+
+  presets = loadPresetsFromStorage();
+  ensurePresetsLength();
+  renderPresetSlots();
 
   fileInput.addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
