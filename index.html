@@ -266,11 +266,45 @@
   }
   .advanced-body {
     margin-top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: max-content auto 1fr;
+    column-gap: 10px;
+    row-gap: 9px;
+    align-items: center;
     font-size: 13px;
   }
+  .option-label {
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .option-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .option-ctrl input[type="range"] {
+    flex: 1;
+    min-width: 120px;
+    accent-color: var(--accent);
+  }
+  .option-ctrl #strengthValue {
+    min-width: 52px;
+    text-align: right;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .option-ctrl .radio-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .preset-ctrl { gap: 6px; }
   .radio-row, .check-row {
     display: flex;
     gap: 14px;
@@ -620,14 +654,26 @@
     <details id="advanced">
       <summary data-i18n="advanced">고급 옵션</summary>
       <div class="advanced-body">
-        <div class="strength-row">
-          <label for="strengthInput" data-i18n="strength">강도</label>
+        <span class="option-label" data-i18n="presetsLabel">프리셋</span>
+        <button type="button" class="info-icon" id="presetsInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl preset-ctrl">
+          <div class="preset-slots" id="presetSlots"></div>
+          <button type="button" id="savePresetBtn" data-i18n="savePreset">현재 저장…</button>
+          <button type="button" id="exportPresetsBtn" data-i18n-title="exportPresets" title="내보내기">⤓</button>
+          <button type="button" id="importPresetsBtn" data-i18n-title="importPresets" title="가져오기">⤒</button>
+          <input type="file" id="importPresetsFile" accept=".json,application/json" hidden>
+        </div>
+
+        <label class="option-label" for="strengthInput" data-i18n="strength">강도</label>
+        <button type="button" class="info-icon" id="strengthInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
           <input type="range" id="strengthInput" min="0" max="100" step="1" value="100">
           <span id="strengthValue">100%</span>
-          <button type="button" class="info-icon" id="strengthInfo" data-i18n-title="info" title="설명">i</button>
         </div>
-        <div class="fill-row">
-          <label for="fillMode" data-i18n="fillLabel">채우기</label>
+
+        <label class="option-label" for="fillMode" data-i18n="fillLabel">채우기</label>
+        <button type="button" class="info-icon" id="fillInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
           <select id="fillMode">
             <option value="black" data-i18n="fillBlack">검정</option>
             <option value="white" data-i18n="fillWhite">흰색</option>
@@ -636,46 +682,43 @@
             <option value="edge" data-i18n="fillEdge" selected>가장자리 확장</option>
           </select>
           <input type="color" id="fillColor" value="#000000">
-          <button type="button" class="info-icon" id="fillInfo" data-i18n-title="info" title="설명">i</button>
         </div>
-        <div class="radio-row">
-          <span data-i18n="sampling">샘플링:</span>
-          <label><input type="radio" name="sampling" value="nearest"> <span data-i18n="samplingNearest">Nearest (빠름)</span></label>
-          <label><input type="radio" name="sampling" value="bilinear" checked> <span data-i18n="samplingBilinear">Bilinear (부드러움)</span></label>
-          <button type="button" class="info-icon" id="samplingInfo" data-i18n-title="info" title="설명">i</button>
+
+        <span class="option-label" data-i18n="sampling">샘플링</span>
+        <button type="button" class="info-icon" id="samplingInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <label class="radio-label"><input type="radio" name="sampling" value="nearest"> <span data-i18n="samplingNearest">Nearest (빠름)</span></label>
+          <label class="radio-label"><input type="radio" name="sampling" value="bilinear" checked> <span data-i18n="samplingBilinear">Bilinear (부드러움)</span></label>
         </div>
-        <div class="check-row">
-          <label style="display:inline-flex; gap:6px; align-items:center;">
-            <span data-i18n="saveFormat">저장 포맷</span>
-            <select id="formatSelect">
-              <option value="image/png">PNG</option>
-              <option value="image/jpeg">JPEG</option>
-              <option value="image/webp">WEBP</option>
-            </select>
-          </label>
-          <label style="margin-left:12px;"><input type="checkbox" id="saveFullRes" checked> <span data-i18n="saveFullRes">원본 해상도로 저장</span></label>
-          <button type="button" class="info-icon" id="saveInfo" data-i18n-title="info" title="설명">i</button>
+
+        <label class="option-label" for="formatSelect" data-i18n="saveFormat">저장 포맷</label>
+        <button type="button" class="info-icon" id="saveInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <select id="formatSelect">
+            <option value="image/png">PNG</option>
+            <option value="image/jpeg">JPEG</option>
+            <option value="image/webp">WEBP</option>
+          </select>
         </div>
-        <div class="check-row">
-          <label><input type="checkbox" id="gridOverlay"> <span data-i18n="gridOverlay">그리드 오버레이</span></label>
-          <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px;">
-            <span style="font-size:12px; color:var(--muted)" data-i18n="gridSpacing">간격(px)</span>
-            <input type="number" id="gridSpacing" min="2" step="1" style="width:70px; background:#0a0d11; border:1px solid var(--border); color:var(--text); padding:4px 6px; border-radius:5px; font-size:13px;">
-          </label>
-          <button type="button" class="info-icon" id="gridInfo" data-i18n-title="info" title="설명">i</button>
+
+        <label class="option-label" for="saveFullRes" data-i18n="saveFullRes">원본 해상도로 저장</label>
+        <button type="button" class="info-icon" id="saveFullResInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <input type="checkbox" id="saveFullRes" checked>
         </div>
-        <div class="check-row">
-          <label><input type="checkbox" id="groupViz"> <span data-i18n="groupViz">군 시각화 (2 원)</span></label>
-          <button type="button" class="info-icon" id="groupVizInfo" data-i18n-title="info" title="설명">i</button>
+
+        <span class="option-label" data-i18n="gridOverlay">그리드 오버레이</span>
+        <button type="button" class="info-icon" id="gridInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <input type="checkbox" id="gridOverlay">
+          <span style="font-size:12px; color:var(--muted)" data-i18n="gridSpacing">간격(px)</span>
+          <input type="number" id="gridSpacing" min="2" step="1" style="width:70px; background:#0a0d11; border:1px solid var(--border); color:var(--text); padding:4px 6px; border-radius:5px; font-size:13px;">
         </div>
-        <div class="check-row preset-row">
-          <span class="muted-label" data-i18n="presetsLabel">프리셋:</span>
-          <div class="preset-slots" id="presetSlots"></div>
-          <button type="button" id="savePresetBtn" data-i18n="savePreset">현재 저장…</button>
-          <button type="button" id="exportPresetsBtn" data-i18n-title="exportPresets" title="내보내기">⤓</button>
-          <button type="button" id="importPresetsBtn" data-i18n-title="importPresets" title="가져오기">⤒</button>
-          <input type="file" id="importPresetsFile" accept=".json,application/json" hidden>
-          <button type="button" class="info-icon" id="presetsInfo" data-i18n-title="info" title="설명">i</button>
+
+        <span class="option-label" data-i18n="groupViz">군 시각화</span>
+        <button type="button" class="info-icon" id="groupVizInfo" data-i18n-title="info" title="설명">i</button>
+        <div class="option-ctrl">
+          <input type="checkbox" id="groupViz">
         </div>
       </div>
     </details>
@@ -949,7 +992,7 @@
       fillCustom: '사용자 색',
       fillTransparent: '투명',
       fillEdge: '가장자리 확장',
-      sampling: '샘플링:',
+      sampling: '샘플링',
       samplingNearest: 'Nearest (빠름)',
       samplingBilinear: 'Bilinear (부드러움)',
       saveFormat: '저장 포맷',
@@ -1032,7 +1075,7 @@
         <p>간격은 픽셀 단위이며, 좌측 격자의 가로·세로 간격을 결정합니다.</p>
       `,
       madeBy: 'made by <a href="https://bsky.app/profile/udaqueness.blog" target="_blank" rel="noopener noreferrer">udaque</a>',
-      presetsLabel: '프리셋:',
+      presetsLabel: '프리셋',
       savePreset: '현재 저장…',
       exportPresets: '프리셋 내보내기 (JSON)',
       importPresets: '프리셋 가져오기 (JSON)',
@@ -1128,7 +1171,7 @@
       fillCustom: 'Custom color',
       fillTransparent: 'Transparent',
       fillEdge: 'Edge clamp',
-      sampling: 'Sampling:',
+      sampling: 'Sampling',
       samplingNearest: 'Nearest (fast)',
       samplingBilinear: 'Bilinear (smooth)',
       saveFormat: 'Save format',
@@ -1211,7 +1254,7 @@
         <p>The spacing is in source pixels and controls both the horizontal and vertical pitch on the left canvas.</p>
       `,
       madeBy: 'made by <a href="https://bsky.app/profile/udaqueness.blog" target="_blank" rel="noopener noreferrer">udaque</a>',
-      presetsLabel: 'Presets:',
+      presetsLabel: 'Presets',
       savePreset: 'Save current…',
       exportPresets: 'Export presets (JSON)',
       importPresets: 'Import presets (JSON)',
@@ -2393,6 +2436,7 @@
   document.getElementById('fillInfo').addEventListener('click', () => showInfoModal('fillExplain'));
   document.getElementById('samplingInfo').addEventListener('click', () => showInfoModal('samplingExplain'));
   document.getElementById('saveInfo').addEventListener('click', () => showInfoModal('saveExplain'));
+  document.getElementById('saveFullResInfo').addEventListener('click', () => showInfoModal('saveExplain'));
   document.getElementById('gridInfo').addEventListener('click', () => showInfoModal('gridExplain'));
   infoModalClose.addEventListener('click', closeInfoModal);
   infoModal.addEventListener('click', (e) => {
