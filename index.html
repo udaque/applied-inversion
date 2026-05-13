@@ -41,6 +41,19 @@
     font-size: 18px;
     font-weight: 600;
   }
+  .app-icon {
+    display: block;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    flex-shrink: 0;
+  }
+  .title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
   .toolbar {
     display: flex;
     gap: 6px;
@@ -583,8 +596,11 @@
 </head>
 <body>
 <header>
-  <h1 id="appTitle">Applied Inversive Geometry</h1>
-  <button type="button" class="info-icon" id="aboutInfo" data-i18n-title="info" title="설명">i</button>
+  <div class="title-group">
+    <img src="icons/icon.svg" alt="" class="app-icon" width="32" height="32">
+    <h1 id="appTitle">Applied Inversive Geometry</h1>
+    <button type="button" class="info-icon" id="aboutInfo" data-i18n-title="info" title="설명">i</button>
+  </div>
   <div class="toolbar">
     <select id="langSelect" title="Language">
       <option value="ko">한국어</option>
