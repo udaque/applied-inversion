@@ -801,6 +801,10 @@
             <option value="smootherstep" data-i18n="easingSmootherstep">Smootherstep</option>
           </select>
         </label>
+        <label class="anim-field anim-fullres-field">
+          <input type="checkbox" id="animFullRes">
+          <span data-i18n="animFullRes">원본 해상도</span>
+        </label>
       </div>
       <div class="anim-row anim-row-actions">
         <button type="button" id="saveAnimBtn" class="primary anim-save" data-i18n="animSaveVideo">영상 저장</button>
@@ -954,9 +958,11 @@
         [out.data.buffer]
       );
     } else if (msg.type === 'renderFrame') {
-      const w = msg.w || preview.w;
-      const h = msg.h || preview.h;
-      const out = buildImageData(preview, msg.params, w, h);
+      const useFull = !!msg.useFull;
+      const src = (useFull && full) ? full : preview;
+      const w = msg.w || src.w;
+      const h = msg.h || src.h;
+      const out = buildImageData(src, msg.params, w, h);
       self.postMessage(
         { type: 'frameRendered', token: msg.token, buffer: out.data.buffer, w, h },
         [out.data.buffer]
@@ -1207,6 +1213,7 @@
       radiusCappedToast: `반지름은 최대 ${1000}px까지만 가능합니다.`,
       animFormat: '포맷',
       animEasingLabel: '보간',
+      animFullRes: '원본 해상도',
       easingLinear: '선형',
       easingEaseInOut: 'Ease-in-out',
       easingSmoothstep: 'Smoothstep',
@@ -1231,8 +1238,10 @@
           <li><b>반전원 개수는 두 키프레임에서 같아야 합니다.</b> 마지막 프레임에서는 추가·삭제 버튼이 잠겨 있으니, 개수 변경은 <b>첫 프레임</b>에서 먼저 정한 뒤 마지막 프레임에서 위치·반지름·강도만 편집하세요.</li>
           <li><b>길이는 최대 4초까지</b>로 제한됩니다 (인코더 안정성을 위해).</li>
           <li><b>반전원 반지름은 최대 1000 px까지</b> 입니다.</li>
-          <li>저장 해상도는 미리보기 기준입니다 (긴 변 최대 900 px).</li>
+          <li>기본 저장 해상도는 미리보기 기준 (긴 변 최대 900 px). 더 큰 해상도가 필요하면 아래 <b>원본 해상도</b> 옵션을 켜세요.</li>
         </ul>
+        <h4>원본 해상도</h4>
+        <p>체크하면 미리보기 대신 업로드한 이미지의 원본 해상도로 매 프레임을 렌더링합니다. 화질이 크게 좋아지는 대신 렌더링이 훨씬 오래 걸리고, 파일 크기와 메모리 사용량도 픽셀 수에 비례해 늘어납니다. 고해상도 + 고FPS + 긴 길이 조합은 브라우저가 멈추거나 인코더가 실패할 수 있으니, 먼저 짧게 테스트한 뒤 길이를 늘리세요.</p>
         <h4>포맷</h4>
         <ul>
           <li><b>MP4</b> — H.264. 가장 보편적. iOS Photos 호환.</li>
@@ -1466,6 +1475,7 @@
       radiusCappedToast: `Radius is capped at ${1000}px.`,
       animFormat: 'Format',
       animEasingLabel: 'Interpolation',
+      animFullRes: 'Original resolution',
       easingLinear: 'Linear',
       easingEaseInOut: 'Ease-in-out',
       easingSmoothstep: 'Smoothstep',
@@ -1490,8 +1500,10 @@
           <li><b>The two keyframes must have the same number of circles.</b> Add / remove buttons are locked on the last frame, so set the count on the <b>first frame</b> first, then switch to the last frame and only edit positions, radii, and strength there.</li>
           <li><b>Duration is capped at 4 seconds</b> for encoder stability.</li>
           <li><b>Inversion-circle radius is capped at 1000 px.</b></li>
-          <li>v1 renders at the current preview resolution (≤ 900 px on the longer side).</li>
+          <li>By default frames render at the preview resolution (≤ 900 px on the longer side). Enable <b>Original resolution</b> below if you need a larger output.</li>
         </ul>
+        <h4>Original resolution</h4>
+        <p>When checked, every frame is rendered from the uploaded image's full resolution instead of the on-screen preview. Quality improves significantly, but rendering takes much longer and file size / memory usage grow with the pixel count. Very large images combined with high FPS and long durations can stall the browser or fail the encoder — try a short clip first before increasing the duration.</p>
         <h4>Format</h4>
         <ul>
           <li><b>MP4</b> — H.264. The most universal; iOS Photos compatible.</li>
@@ -3503,6 +3515,7 @@
   const animFormatSelect = document.getElementById('animFormat');
   const animEasingSelect = document.getElementById('animEasing');
   const animCodecSelect = document.getElementById('animCodec');
+  const animFullResCheck = document.getElementById('animFullRes');
   const animBannerInfoBtn = document.getElementById('animBannerInfo');
   const animRenderModal = document.getElementById('animRenderModal');
   const animProgressFill = document.getElementById('animProgressFill');
@@ -3692,12 +3705,44 @@
     };
   }
 
-  function renderFrameOnce(params) {
+  function renderFrameOnce(params, opts) {
+    const useFull = !!(opts && opts.useFull && state.fullData);
+    let outParams = params;
+    let w = state.previewW;
+    let h = state.previewH;
+    if (useFull) {
+      const sx = state.fullW / state.previewW;
+      const sy = state.fullH / state.previewH;
+      const scaled = (params.circles || []).map((c) => ({
+        cx: c.cx * sx, cy: c.cy * sy, r: c.r * sx,
+      }));
+      outParams = { ...params, circles: scaled };
+      w = state.fullW;
+      h = state.fullH;
+    }
     return new Promise((resolve) => {
       frameResolver = resolve;
       renderToken++;
-      worker.postMessage({ type: 'renderFrame', token: renderToken, params, w: state.previewW, h: state.previewH });
+      worker.postMessage({ type: 'renderFrame', token: renderToken, params: outParams, w, h, useFull });
     });
+  }
+
+  function animRenderDims() {
+    const useFull = !!(animFullResCheck && animFullResCheck.checked && state.fullData);
+    const w = useFull ? state.fullW : state.previewW;
+    const h = useFull ? state.fullH : state.previewH;
+    return { useFull, w, h };
+  }
+
+  function bitrateFor(w, h, fps) {
+    // Base ~5 Mbps at 900x600/30fps; scale with pixel count and framerate, cap at 50 Mbps.
+    const base = 5_000_000;
+    const refPixels = 900 * 600;
+    const refFps = 30;
+    const px = Math.max(1, w * h);
+    const f = Math.max(1, fps || 30);
+    const scaled = base * (px / refPixels) * (f / refFps);
+    return Math.min(50_000_000, Math.max(1_000_000, Math.round(scaled)));
   }
 
   function showAnimProgress(i, n) {
@@ -3765,8 +3810,10 @@
     const dur = Math.max(0.1, Math.min(4, parseFloat(animDurationInput.value) || 3));
     const fps = Math.max(1, Math.min(60, parseInt(animFpsInput.value, 10) || 60));
     const totalFrames = Math.max(1, Math.round(dur * fps));
-    const w = state.previewW;
-    const h = state.previewH;
+    const dims = animRenderDims();
+    const useFull = dims.useFull;
+    const w = dims.w;
+    const h = dims.h;
     const frameDelayMs = Math.max(20, Math.round(1000 / fps));
 
     const gifenc = await loadGifLib();
@@ -3784,7 +3831,7 @@
         if (animCancelRequested) break;
         const t = totalFrames > 1 ? i / (totalFrames - 1) : 0;
         const params = buildFrameParams(t);
-        const { buffer, w: rw, h: rh } = await renderFrameOnce(params);
+        const { buffer, w: rw, h: rh } = await renderFrameOnce(params, { useFull });
         const rgba = new Uint8Array(buffer);
         const palette = gifenc.quantize(rgba, 256);
         const index = gifenc.applyPalette(rgba, palette);
@@ -3829,8 +3876,11 @@
     const dur = Math.max(0.1, Math.min(4, parseFloat(animDurationInput.value) || 3));
     const fps = Math.max(1, Math.min(60, parseInt(animFpsInput.value, 10) || 60));
     const totalFrames = Math.max(1, Math.round(dur * fps));
-    const w = state.previewW;
-    const h = state.previewH;
+    const dims = animRenderDims();
+    const useFull = dims.useFull;
+    const w = dims.w;
+    const h = dims.h;
+    const bitrate = bitrateFor(w, h, fps);
     const requestedFormat = animFormatSelect.value;
     const userCodec = animCodecSelect.value;
     let format = requestedFormat;
@@ -3838,7 +3888,7 @@
     async function configSupported(codec) {
       try {
         const r = await VideoEncoder.isConfigSupported({
-          codec, width: w, height: h, bitrate: 5_000_000, framerate: fps,
+          codec, width: w, height: h, bitrate, framerate: fps,
         });
         return r && r.supported;
       } catch { return false; }
@@ -3890,7 +3940,7 @@
     });
     encoder.configure({
       codec: codecString, width: w, height: h,
-      bitrate: 5_000_000, framerate: fps,
+      bitrate, framerate: fps,
     });
 
     const recordCanvas = document.createElement('canvas');
@@ -3912,7 +3962,7 @@
         if (encoderError) throw encoderError;
         const t = totalFrames > 1 ? i / (totalFrames - 1) : 0;
         const params = buildFrameParams(t);
-        const { buffer, w: rw, h: rh } = await renderFrameOnce(params);
+        const { buffer, w: rw, h: rh } = await renderFrameOnce(params, { useFull });
         const id = new ImageData(new Uint8ClampedArray(buffer), rw, rh);
         rctx.putImageData(id, 0, 0);
 
@@ -3978,14 +4028,17 @@
       mimeType = 'video/webm';
     }
 
-    const w = state.previewW, h = state.previewH;
+    const dims = animRenderDims();
+    const useFull = dims.useFull;
+    const w = dims.w, h = dims.h;
+    const bitrate = bitrateFor(w, h, fps);
     const recordCanvas = document.createElement('canvas');
     recordCanvas.width = w;
     recordCanvas.height = h;
     const rctx = recordCanvas.getContext('2d');
     const stream = recordCanvas.captureStream(0);
     const videoTrack = stream.getVideoTracks()[0];
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
     let recorderErr = null;
     recorder.onerror = (e) => { recorderErr = e.error || e; };
     const chunks = [];
@@ -4010,7 +4063,7 @@
         if (animCancelRequested) break;
         const t = totalFrames > 1 ? i / (totalFrames - 1) : 0;
         const params = buildFrameParams(t);
-        const { buffer, w: rw, h: rh } = await renderFrameOnce(params);
+        const { buffer, w: rw, h: rh } = await renderFrameOnce(params, { useFull });
         const id = new ImageData(new Uint8ClampedArray(buffer), rw, rh);
         rctx.putImageData(id, 0, 0);
         if (videoTrack && typeof videoTrack.requestFrame === 'function') {
