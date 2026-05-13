@@ -1477,6 +1477,16 @@
     };
   }
 
+  function resizeCursorFor(dx, dy) {
+    let a = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (a < 0) a += 360;
+    const sector = Math.round(a / 45) % 8;
+    if (sector === 0 || sector === 4) return 'ew-resize';
+    if (sector === 1 || sector === 5) return 'nwse-resize';
+    if (sector === 2 || sector === 6) return 'ns-resize';
+    return 'nesw-resize';
+  }
+
   function hitTest(x, y) {
     const active = state.circles[state.activeIndex];
     const ad = Math.hypot(x - active.cx, y - active.cy);
@@ -1536,10 +1546,16 @@
     const { x, y } = canvasCoords(e);
     if (!state.dragMode) {
       const hit = hitTest(x, y);
-      leftCanvas.style.cursor =
-        hit.type === 'edge' ? 'nwse-resize' :
-        hit.type === 'inside' ? 'grab' :
-        hit.type === 'switch' ? 'pointer' : 'crosshair';
+      let cursor = 'crosshair';
+      if (hit.type === 'edge') {
+        const ac = state.circles[hit.index];
+        cursor = resizeCursorFor(x - ac.cx, y - ac.cy);
+      } else if (hit.type === 'inside') {
+        cursor = 'grab';
+      } else if (hit.type === 'switch') {
+        cursor = 'pointer';
+      }
+      leftCanvas.style.cursor = cursor;
       return;
     }
     if (state.dragMode === 'pan') {
@@ -1547,6 +1563,7 @@
       state.cy = clamp(y + (state.dragOffsetY || 0), 0, state.previewH);
     } else if (state.dragMode === 'resize') {
       state.r = Math.max(1, Math.hypot(x - state.cx, y - state.cy));
+      leftCanvas.style.cursor = resizeCursorFor(x - state.cx, y - state.cy);
     }
     updateInputs();
     updateMeta();
