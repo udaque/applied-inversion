@@ -3612,7 +3612,7 @@
     recordCanvas.height = h;
     const rctx = recordCanvas.getContext('2d');
     const stream = recordCanvas.captureStream(fps);
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
     const chunks = [];
     recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     const stopped = new Promise((res) => { recorder.onstop = res; });
@@ -3628,7 +3628,7 @@
     const prevText = saveBtn.textContent;
     saveBtn.textContent = T[currentLang].saving;
 
-    recorder.start();
+    recorder.start(500);
     const startedAt = performance.now();
     try {
       for (let i = 0; i < totalFrames; i++) {
@@ -3647,7 +3647,9 @@
       console.error(err);
       showToast(T[currentLang].animFailedToast);
     }
-    recorder.stop();
+    // Let the recorder catch the last frame(s) before we stop the stream
+    await new Promise((r) => setTimeout(r, 250));
+    try { recorder.stop(); } catch {}
     await stopped;
 
     animRenderModal.hidden = true;
