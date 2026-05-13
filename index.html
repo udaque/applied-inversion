@@ -1455,6 +1455,26 @@
       lctx.restore();
     }
 
+    if (state.circles.length > 1) {
+      lctx.save();
+      lctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      lctx.textAlign = 'center';
+      lctx.textBaseline = 'bottom';
+      lctx.lineJoin = 'round';
+      for (let i = 0; i < state.circles.length; i++) {
+        const c = state.circles[i];
+        const active = i === state.activeIndex;
+        const label = String(i + 1);
+        const ty = Math.max(14, c.cy - c.r - 5);
+        lctx.lineWidth = 4;
+        lctx.strokeStyle = 'rgba(0,0,0,0.75)';
+        lctx.strokeText(label, c.cx, ty);
+        lctx.fillStyle = active ? '#50c8ff' : 'rgba(255,255,255,0.85)';
+        lctx.fillText(label, c.cx, ty);
+      }
+      lctx.restore();
+    }
+
     const ac = state.circles[state.activeIndex];
     lctx.save();
     lctx.fillStyle = 'rgba(74,163,255,0.95)';
