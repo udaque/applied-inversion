@@ -43,12 +43,19 @@
   }
   .toolbar {
     display: flex;
-    gap: 10px;
+    gap: 6px;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     margin-left: auto;
   }
-  button, select, input[type="file"]::file-selector-button {
+  @media (max-width: 520px) {
+    .toolbar { gap: 4px; }
+    .toolbar button, .toolbar select, .toolbar .upload-btn {
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+  }
+  button, select, .upload-btn {
     background: var(--panel);
     color: var(--text);
     border: 1px solid var(--border);
@@ -57,18 +64,16 @@
     font-size: 13px;
     cursor: pointer;
     font-family: inherit;
+    display: inline-flex;
+    align-items: center;
   }
-  button:hover { border-color: var(--accent); }
+  button:hover, .upload-btn:hover { border-color: var(--accent); }
   button:disabled { opacity: 0.5; cursor: progress; }
   button.primary {
     background: var(--accent);
     color: #000;
     border-color: var(--accent);
     font-weight: 600;
-  }
-  input[type="file"] {
-    color: var(--muted);
-    font-size: 13px;
   }
   main {
     display: grid;
@@ -585,7 +590,8 @@
       <option value="ko">한국어</option>
       <option value="en">English</option>
     </select>
-    <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="fileInput" accept="image/*" hidden>
+    <label for="fileInput" class="upload-btn" data-i18n="openImage" data-i18n-title="openImageTitle" title="이미지 업로드">이미지</label>
     <button id="undoBtn" type="button" data-i18n-title="undo" disabled>↶</button>
     <button id="redoBtn" type="button" data-i18n-title="redo" disabled>↷</button>
     <button id="saveBtn" class="primary" data-i18n="save">저장</button>
@@ -992,6 +998,8 @@
       title: 'Image Inversion',
       save: '저장',
       saving: '저장 중…',
+      openImage: '이미지',
+      openImageTitle: '이미지 업로드',
       undo: '실행 취소 (Ctrl/⌘ Z)',
       redo: '다시 실행 (Ctrl/⌘ ⇧ Z)',
       circlesLabel: '반전원',
@@ -1174,6 +1182,8 @@
       title: 'Image Inversion',
       save: 'Save',
       saving: 'Saving…',
+      openImage: 'Image',
+      openImageTitle: 'Upload image',
       undo: 'Undo (Ctrl/⌘ Z)',
       redo: 'Redo (Ctrl/⌘ ⇧ Z)',
       circlesLabel: 'Circles',
