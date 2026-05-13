@@ -18,9 +18,14 @@ Newest first.
   원본 해상도, 그리드 오버레이, 군 시각화, 프리셋).
 - **Three-section layout** inside the advanced panel: 이미지 / 보조 시각화 /
   입출력 (Image / Visualization / I/O).
-- Footer crediting [udaque](https://bsky.app/profile/udaqueness.blog).
+- App icon in the header next to the title.
+- Footer crediting [udaque](https://bsky.app/profile/udaqueness.blog) and
+  noting the project was built with Claude Code.
 
 ### Changed
+- Renamed the app to **Applied Inversive Geometry** (page title, share text,
+  PWA manifest, READMEs). The browser tab title is unified to "Inversion"
+  to match the PWA home-screen name.
 - Advanced options reorganized into a three-column grid (label, info icon,
   control). Every slider, dropdown, checkbox, and radio group now starts on
   the same column edge.
@@ -32,11 +37,19 @@ Newest first.
   inversion circles (not just the active one); switching the active circle
   no longer changes the right-side grid.
 - "군 시각화" label simplified (the "(2 원)" qualifier moved into the info
-  modal).
+  modal). The checkbox is now disabled unless there are exactly two circles,
+  and the row dims visually when unavailable. Orbit-mode / clear-orbit
+  buttons only appear while group exploration is on.
+- Toolbar redesigned for narrow viewports: native file input replaced with a
+  compact "이미지 업로드 / Upload image" button, gaps tightened, and a media
+  query keeps the six toolbar items on a single row down to ~360px.
 
 ### Fixed
 - Double-tap on the result canvas now resets the view on touch devices
   (`touch-action: none` was preventing the native `dblclick` event).
+- Hidden buttons (orbit mode, clear orbits, etc.) were being overridden by an
+  earlier `button { display: inline-flex }` rule. Restored the `[hidden]`
+  semantic with an explicit `!important` rule.
 
 ---
 
