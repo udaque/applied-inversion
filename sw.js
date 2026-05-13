@@ -1,5 +1,5 @@
 // Bump this when shipping changes to force clients to refresh the cache.
-const CACHE = 'applied-inversion-v1';
+const CACHE = 'applied-inversion-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,12 @@ const ASSETS = [
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
   './icons/favicon-32.png',
+];
+
+// Cross-origin URL prefixes we are willing to cache (muxer libs loaded at runtime).
+const EXTERNAL_ALLOWED = [
+  'https://cdn.jsdelivr.net/npm/mp4-muxer@',
+  'https://cdn.jsdelivr.net/npm/webm-muxer@',
 ];
 
 self.addEventListener('install', (event) => {
@@ -30,14 +36,15 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
+  const sameOrigin = url.origin === self.location.origin;
+  const externalAllowed = EXTERNAL_ALLOWED.some((p) => req.url.startsWith(p));
+  if (!sameOrigin && !externalAllowed) return;
 
-  // Stale-while-revalidate for same-origin GETs.
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req, { ignoreSearch: true });
     const fetchPromise = fetch(req).then((res) => {
-      if (res && res.ok && res.type === 'basic') {
+      if (res && res.ok && (res.type === 'basic' || res.type === 'cors' || res.type === 'opaque')) {
         cache.put(req, res.clone()).catch(() => {});
       }
       return res;

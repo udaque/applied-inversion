@@ -3583,6 +3583,25 @@
     animProgressText.textContent = T[currentLang].animFrameProgress(i, n);
   }
 
+  function canUseWebCodecs() {
+    return typeof VideoEncoder === 'function' && typeof VideoFrame === 'function';
+  }
+
+  let _mp4MuxerLib = null;
+  let _webmMuxerLib = null;
+  async function loadMuxerLib(format) {
+    if (format === 'mp4') {
+      if (!_mp4MuxerLib) {
+        _mp4MuxerLib = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.mjs');
+      }
+      return _mp4MuxerLib;
+    }
+    if (!_webmMuxerLib) {
+      _webmMuxerLib = await import('https://cdn.jsdelivr.net/npm/webm-muxer@5.0.3/build/webm-muxer.mjs');
+    }
+    return _webmMuxerLib;
+  }
+
   async function renderAnimation() {
     if (!worker) {
       showToast(T[currentLang].animFailedToast);
@@ -3590,8 +3609,156 @@
     }
     const a = state.animation;
     if (!a || !a.first || !a.last) return;
-    // Flush current edits into the active keyframe before rendering
     a[a.editingFrame] = captureFrameState();
+    if (canUseWebCodecs()) {
+      try {
+        await renderAnimationWebCodecs();
+        return;
+      } catch (e) {
+        console.warn('WebCodecs animation render failed, falling back to MediaRecorder', e);
+      }
+    }
+    await renderAnimationMediaRecorder();
+  }
+
+  async function renderAnimationWebCodecs() {
+    const a = state.animation;
+    const dur = Math.max(0.1, parseFloat(animDurationInput.value) || 3);
+    const fps = Math.max(1, Math.min(60, parseInt(animFpsInput.value, 10) || 60));
+    const totalFrames = Math.max(1, Math.round(dur * fps));
+    const w = state.previewW;
+    const h = state.previewH;
+    let format = animFormatSelect.value;
+
+    async function configSupported(codec) {
+      try {
+        const r = await VideoEncoder.isConfigSupported({
+          codec, width: w, height: h, bitrate: 5_000_000, framerate: fps,
+        });
+        return r && r.supported;
+      } catch { return false; }
+    }
+
+    let codecString = null;
+    if (format === 'mp4') {
+      for (const c of ['avc1.4D0028', 'avc1.42E01F', 'avc1.640028', 'avc1.42001F']) {
+        if (await configSupported(c)) { codecString = c; break; }
+      }
+      if (!codecString) {
+        format = 'webm';
+        showToast(T[currentLang].animMp4Unsupported);
+      }
+    }
+    if (format === 'webm') {
+      for (const c of ['vp09.00.10.08', 'vp8']) {
+        if (await configSupported(c)) { codecString = c; break; }
+      }
+      if (!codecString) throw new Error('No supported WebCodecs codec for WebM');
+    }
+
+    const muxerLib = await loadMuxerLib(format);
+    let muxer, mimeType, ext;
+    if (format === 'mp4') {
+      muxer = new muxerLib.Muxer({
+        target: new muxerLib.ArrayBufferTarget(),
+        video: { codec: 'avc', width: w, height: h, frameRate: fps },
+        fastStart: 'in-memory',
+      });
+      mimeType = 'video/mp4';
+      ext = 'mp4';
+    } else {
+      const codecKey = codecString.startsWith('vp09') ? 'V_VP9' : 'V_VP8';
+      muxer = new muxerLib.Muxer({
+        target: new muxerLib.ArrayBufferTarget(),
+        video: { codec: codecKey, width: w, height: h, frameRate: fps },
+      });
+      mimeType = 'video/webm';
+      ext = 'webm';
+    }
+
+    let encoderError = null;
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => { encoderError = e; },
+    });
+    encoder.configure({
+      codec: codecString, width: w, height: h,
+      bitrate: 5_000_000, framerate: fps,
+    });
+
+    const recordCanvas = document.createElement('canvas');
+    recordCanvas.width = w;
+    recordCanvas.height = h;
+    const rctx = recordCanvas.getContext('2d');
+    const frameDurationUs = Math.round(1_000_000 / fps);
+    const keyEvery = Math.max(1, fps * 2);
+
+    animCancelRequested = false;
+    animRenderModal.hidden = false;
+    animProgressFill.style.transition = 'none';
+    animProgressFill.style.width = '0%';
+    animProgressText.textContent = T[currentLang].animFrameProgress(0, totalFrames);
+    animProgressFill.getBoundingClientRect();
+    animProgressFill.style.transition = '';
+    saveAnimBtn.disabled = true;
+
+    try {
+      for (let i = 0; i < totalFrames; i++) {
+        if (animCancelRequested) break;
+        if (encoderError) throw encoderError;
+        const t = totalFrames > 1 ? i / (totalFrames - 1) : 0;
+        const params = buildFrameParams(t);
+        const { buffer, w: rw, h: rh } = await renderFrameOnce(params);
+        const id = new ImageData(new Uint8ClampedArray(buffer), rw, rh);
+        rctx.putImageData(id, 0, 0);
+
+        const frame = new VideoFrame(recordCanvas, {
+          timestamp: i * frameDurationUs,
+          duration: frameDurationUs,
+        });
+        encoder.encode(frame, { keyFrame: i % keyEvery === 0 });
+        frame.close();
+
+        showAnimProgress(i + 1, totalFrames);
+        await new Promise((r) => requestAnimationFrame(r));
+        while (encoder.encodeQueueSize > 8 && !animCancelRequested) {
+          await new Promise((r) => setTimeout(r, 10));
+        }
+      }
+      await encoder.flush();
+      if (encoderError) throw encoderError;
+    } finally {
+      try { encoder.close(); } catch {}
+    }
+
+    animRenderModal.hidden = true;
+    saveAnimBtn.disabled = false;
+    if (animCancelRequested) return;
+
+    muxer.finalize();
+    const buf = muxer.target.buffer;
+    const blob = new Blob([buf], { type: mimeType });
+    const filename = `inversion.${ext}`;
+    const file = new File([blob], filename, { type: mimeType });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Inverted Animation' });
+        showToast(T[currentLang].animDoneToast);
+        return;
+      } catch (err) {
+        if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a2 = document.createElement('a');
+    a2.href = url; a2.download = filename;
+    document.body.appendChild(a2); a2.click(); a2.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast(T[currentLang].animDoneToast);
+  }
+
+  async function renderAnimationMediaRecorder() {
+    const a = state.animation;
     const dur = Math.max(0.1, parseFloat(animDurationInput.value) || 3);
     const fps = Math.max(1, Math.min(60, parseInt(animFpsInput.value, 10) || 30));
     const totalFrames = Math.max(1, Math.round(dur * fps));
