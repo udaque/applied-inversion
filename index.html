@@ -105,12 +105,16 @@
       position: fixed;
       right: 12px;
       bottom: 12px;
-      width: min(42vw, 200px);
+      width: min(31vw, 150px);
       padding: 6px;
       z-index: 50;
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
       border-color: var(--accent);
       cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    main > section.right-panel.pip-faded:not(.pip-expanded) {
+      opacity: 0.3;
     }
     main > section.right-panel:not(.pip-expanded) h2,
     main > section.right-panel:not(.pip-expanded) .view-controls,
@@ -150,6 +154,17 @@
     main > section.right-panel:not(.has-image):not(.pip-expanded) {
       display: none;
     }
+    main > section.right-panel.pip-hidden:not(.pip-expanded) {
+      display: none;
+    }
+    main > section.right-panel.has-image:not(.pip-expanded):not(.pip-hidden) .pip-hide {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pip-show:not([hidden]) {
+      display: inline-flex;
+    }
     main > section.right-panel.pip-expanded #rightCanvas,
     main > section.right-panel.pip-expanded #rightOverlay {
       width: 100%;
@@ -171,6 +186,41 @@
     z-index: 2;
   }
   main > section.right-panel.pip-expanded .pip-toggle { display: inline-flex; align-items: center; }
+  .pip-hide {
+    display: none;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(10, 13, 17, 0.85);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 3;
+    cursor: pointer;
+  }
+  .pip-show {
+    display: none;
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    z-index: 50;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 18px;
+    line-height: 1;
+    padding: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+  }
   .pip-tap-hint {
     display: none;
     position: absolute;
@@ -1006,6 +1056,7 @@
   <section class="panel right-panel" id="rightPanel">
     <h2 data-i18n="rightPanel">반전 결과</h2>
     <button type="button" id="pipToggleBtn" class="pip-toggle" aria-label="Expand" data-i18n-title="pipExpand" title="확대">⤢</button>
+    <button type="button" id="pipHideBtn" class="pip-hide" aria-label="Hide" data-i18n-title="pipHide" title="숨기기">×</button>
     <div class="canvas-wrap" id="rightWrap">
       <div class="empty-msg" id="rightEmpty" data-i18n="rightPlaceholder">결과가 여기에 표시됩니다</div>
       <canvas id="rightCanvas" style="display:none"></canvas>
@@ -1022,6 +1073,7 @@
     </div>
   </section>
 </main>
+<button type="button" id="pipShowBtn" class="pip-show" aria-label="Show preview" data-i18n-title="pipShow" title="미리보기 표시" hidden>▣</button>
 <footer class="site-footer">
   <span data-i18n-html="madeBy">made by <a href="https://bsky.app/profile/udaqueness.blog" target="_blank" rel="noopener noreferrer">udaque</a> · built with <a href="https://claude.com/claude-code" target="_blank" rel="noopener noreferrer">Claude Code</a></span>
 </footer>
@@ -1301,6 +1353,8 @@
       pipExpand: '결과 확대',
       pipCollapse: '미니뷰로 돌리기',
       pipTapHint: '탭하면 확대',
+      pipHide: '미니뷰 숨기기',
+      pipShow: '미리보기 다시 표시',
       easingLinear: '선형',
       easingEaseInOut: 'Ease-in-out',
       easingSmoothstep: 'Smoothstep',
@@ -1566,6 +1620,8 @@
       pipExpand: 'Expand result',
       pipCollapse: 'Back to mini view',
       pipTapHint: 'Tap to expand',
+      pipHide: 'Hide mini view',
+      pipShow: 'Show preview',
       easingLinear: 'Linear',
       easingEaseInOut: 'Ease-in-out',
       easingSmoothstep: 'Smoothstep',
@@ -4243,6 +4299,8 @@
   // ----- Floating PIP (mobile) -----
   const rightPanel = document.getElementById('rightPanel');
   const pipToggleBtn = document.getElementById('pipToggleBtn');
+  const pipHideBtn = document.getElementById('pipHideBtn');
+  const pipShowBtn = document.getElementById('pipShowBtn');
   function isPipViewport() {
     return window.matchMedia('(max-width: 900px)').matches;
   }
@@ -4258,6 +4316,10 @@
       resetView();
     });
   }
+  function setPipHidden(hidden) {
+    rightPanel.classList.toggle('pip-hidden', hidden);
+    pipShowBtn.hidden = !hidden;
+  }
   rightWrap.addEventListener('click', (e) => {
     if (!isPipViewport()) return;
     if (rightPanel.classList.contains('pip-expanded')) return;
@@ -4269,6 +4331,37 @@
     e.stopPropagation();
     setPipExpanded(false);
   });
+  pipHideBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setPipHidden(true);
+  });
+  pipShowBtn.addEventListener('click', () => {
+    setPipHidden(false);
+  });
+  // Fade the PIP while the user's pointer overlaps it during a left-canvas gesture,
+  // so they can see the source pixels underneath.
+  function pipCanFade() {
+    return isPipViewport()
+      && rightPanel.classList.contains('has-image')
+      && !rightPanel.classList.contains('pip-expanded')
+      && !rightPanel.classList.contains('pip-hidden');
+  }
+  function updatePipFade(e) {
+    if (!pipCanFade()) {
+      rightPanel.classList.remove('pip-faded');
+      return;
+    }
+    const r = rightPanel.getBoundingClientRect();
+    const inside = e.clientX >= r.left && e.clientX <= r.right
+                && e.clientY >= r.top && e.clientY <= r.bottom;
+    rightPanel.classList.toggle('pip-faded', inside);
+  }
+  function clearPipFade() { rightPanel.classList.remove('pip-faded'); }
+  leftCanvas.addEventListener('pointerdown', updatePipFade);
+  leftCanvas.addEventListener('pointermove', updatePipFade);
+  leftCanvas.addEventListener('pointerup', clearPipFade);
+  leftCanvas.addEventListener('pointercancel', clearPipFade);
+  leftCanvas.addEventListener('pointerleave', clearPipFade);
   // Mark "has image" so the empty PIP is hidden on mobile until upload completes.
   const pipObserver = new MutationObserver(() => {
     const shown = rightCanvas.style.display === 'block';
