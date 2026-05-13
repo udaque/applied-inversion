@@ -522,11 +522,13 @@
             <option value="edge" data-i18n="fillEdge">가장자리 확장</option>
           </select>
           <input type="color" id="fillColor" value="#000000">
+          <button type="button" class="info-icon" id="fillInfo" data-i18n-title="info" title="설명">i</button>
         </div>
         <div class="radio-row">
           <span data-i18n="sampling">샘플링:</span>
           <label><input type="radio" name="sampling" value="nearest"> <span data-i18n="samplingNearest">Nearest (빠름)</span></label>
           <label><input type="radio" name="sampling" value="bilinear" checked> <span data-i18n="samplingBilinear">Bilinear (부드러움)</span></label>
+          <button type="button" class="info-icon" id="samplingInfo" data-i18n-title="info" title="설명">i</button>
         </div>
         <div class="check-row">
           <label style="display:inline-flex; gap:6px; align-items:center;">
@@ -538,6 +540,7 @@
             </select>
           </label>
           <label style="margin-left:12px;"><input type="checkbox" id="saveFullRes" checked> <span data-i18n="saveFullRes">원본 해상도로 저장</span></label>
+          <button type="button" class="info-icon" id="saveInfo" data-i18n-title="info" title="설명">i</button>
         </div>
         <div class="check-row">
           <label><input type="checkbox" id="gridOverlay"> <span data-i18n="gridOverlay">그리드 오버레이</span></label>
@@ -545,6 +548,7 @@
             <span style="font-size:12px; color:var(--muted)" data-i18n="gridSpacing">간격(px)</span>
             <input type="number" id="gridSpacing" min="2" step="1" style="width:70px; background:#0a0d11; border:1px solid var(--border); color:var(--text); padding:4px 6px; border-radius:5px; font-size:13px;">
           </label>
+          <button type="button" class="info-icon" id="gridInfo" data-i18n-title="info" title="설명">i</button>
         </div>
         <div class="check-row">
           <label><input type="checkbox" id="groupViz"> <span data-i18n="groupViz">군 시각화 (2 원)</span></label>
@@ -831,6 +835,44 @@
       typeElliptic: 'Elliptic',
       typeParabolic: 'Parabolic',
       typeHyperbolic: 'Hyperbolic',
+      fillExplain: `
+        <h3>정보 없는 영역 처리</h3>
+        <p>반전(inversion)에서 결과 픽셀 Q의 원본 좌표 P는 |OP|·|OQ| = r²로 결정됩니다. Q가 중심 O에 매우 가까우면 |OP|는 매우 커져서 원본 이미지 바깥으로 나가게 되고, 그 픽셀은 원본에 해당하는 정보가 없는 영역이 됩니다.</p>
+        <p>이 옵션은 그런 픽셀들을 어떻게 채울지 결정합니다.</p>
+        <h4>옵션</h4>
+        <ul>
+          <li><b>검정 / 흰색</b> — 단색으로 채움.</li>
+          <li><b>사용자 색</b> — 오른쪽 색상 피커에서 고른 색으로 채움.</li>
+          <li><b>투명</b> — 알파 0으로 비워둠 (PNG/WEBP로 저장하면 투명하게 남음).</li>
+          <li><b>가장자리 확장</b> — 원본 이미지 경계에 가장 가까운 픽셀을 클램프 샘플링. 단색 배경보다 자연스럽게 가장자리가 늘어난 듯한 효과.</li>
+        </ul>
+      `,
+      samplingExplain: `
+        <h3>샘플링 방식</h3>
+        <p>반전 변환은 출력 픽셀의 원본 좌표를 정수가 아닌 실수로 계산합니다. 그 실수 좌표 주변의 원본 픽셀들을 어떻게 모아 출력 색을 정할지가 샘플링 방식입니다.</p>
+        <h4>옵션</h4>
+        <ul>
+          <li><b>Nearest</b> — 가장 가까운 한 픽셀을 그대로 사용. 빠르지만 거친 모자이크처럼 보일 수 있습니다.</li>
+          <li><b>Bilinear</b> (기본) — 주변 2×2 픽셀을 거리 가중 평균. 픽셀당 곱셈이 4번 더 들지만 결과가 부드럽습니다. 반전 중심 근처처럼 원본의 작은 영역이 크게 확대되는 곳에서 차이가 가장 잘 보입니다.</li>
+        </ul>
+      `,
+      saveExplain: `
+        <h3>저장 옵션</h3>
+        <h4>저장 포맷</h4>
+        <ul>
+          <li><b>PNG</b> (기본) — 무손실 압축, 투명(알파) 지원. 결과를 다시 편집하거나 정밀한 비교에 좋습니다.</li>
+          <li><b>JPEG</b> — 손실 압축, 파일이 작습니다. 알파가 없어서 투명 영역은 자동으로 흰 배경에 합성됩니다.</li>
+          <li><b>WEBP</b> — 더 좋은 압축률에 투명도 지원. 대부분의 모던 브라우저/SNS가 받아주지만 iOS 사진 보관함 같은 일부 환경에서는 호환되지 않을 수 있습니다.</li>
+        </ul>
+        <h4>원본 해상도로 저장</h4>
+        <p>미리보기는 빠른 인터랙션을 위해 긴 변 900px 이하로 축소된 결과를 보여줍니다. 이 옵션을 켜면 저장 시 원본 해상도의 소스 이미지에 다시 반전 변환을 적용한 뒤 내보냅니다. 끄면 미리보기 그대로 저장됩니다.</p>
+      `,
+      gridExplain: `
+        <h3>그리드 오버레이</h3>
+        <p>왼쪽 원본 캔버스에 흰색 직선 격자를 그리고, 오른쪽 결과 캔버스에는 그 격자가 반전 변환(여러 원이 있다면 그 합성)을 거친 모습을 그립니다.</p>
+        <p>반전 중심을 지나는 직선은 변환 후에도 자기 자신이지만, 나머지 직선은 중심을 지나는 원으로 매핑됩니다. 여러 원의 합성에서는 더 복잡한 곡선이 나타납니다 — 변환의 기하학적 효과를 한눈에 보는 도구로 좋습니다.</p>
+        <p>간격은 픽셀 단위이며, 좌측 격자의 가로·세로 간격을 결정합니다.</p>
+      `,
       groupVizExplain: `
         <h3>군 시각화 — Möbius 변환의 구조</h3>
         <p>반전 원이 두 개일 때, 합성 <code>σ₂ ∘ σ₁</code> 은 한 개의 <b>Möbius 변환</b>입니다 (방향 보존). 두 원의 상대 위치에 따라 정확히 세 가지 종류 중 하나가 됩니다.</p>
@@ -907,6 +949,44 @@
       typeElliptic: 'Elliptic',
       typeParabolic: 'Parabolic',
       typeHyperbolic: 'Hyperbolic',
+      fillExplain: `
+        <h3>Undefined region fill</h3>
+        <p>For an output pixel Q the source coordinate P satisfies |OP|·|OQ| = r². When Q is close to the center O the corresponding |OP| blows up and P lands outside the source image, so that output pixel has no real source data.</p>
+        <p>This option decides what to put in those pixels.</p>
+        <h4>Options</h4>
+        <ul>
+          <li><b>Black / White</b> — fill with a flat color.</li>
+          <li><b>Custom color</b> — use the color from the picker on the right.</li>
+          <li><b>Transparent</b> — leave alpha at 0 (preserved when saving as PNG or WEBP).</li>
+          <li><b>Edge clamp</b> — sample the nearest in-bounds source pixel instead, giving a stretched-edge look rather than a flat fill.</li>
+        </ul>
+      `,
+      samplingExplain: `
+        <h3>Sampling</h3>
+        <p>The inversion gives non-integer source coordinates for each output pixel. The sampling option decides how the surrounding source pixels are combined into the output color.</p>
+        <h4>Options</h4>
+        <ul>
+          <li><b>Nearest</b> — take the single closest pixel. Fast, but can look chunky.</li>
+          <li><b>Bilinear</b> (default) — weighted average of the surrounding 2×2 pixels. Four extra multiplies per pixel, but smoother. The difference is most visible near the inversion center where a small source region is stretched out.</li>
+        </ul>
+      `,
+      saveExplain: `
+        <h3>Save options</h3>
+        <h4>Save format</h4>
+        <ul>
+          <li><b>PNG</b> (default) — lossless, supports transparency. Good for further editing or precise comparison.</li>
+          <li><b>JPEG</b> — lossy, smaller files. Has no alpha channel; transparent regions are composited onto white.</li>
+          <li><b>WEBP</b> — better compression than PNG with alpha. Most modern browsers and social platforms accept it, but a few environments (e.g. the iOS Photos library) don't.</li>
+        </ul>
+        <h4>Save at original resolution</h4>
+        <p>The preview is rendered at ≤ 900 px on the longer side for fast interaction. With this option on, save re-renders the inversion from the full-resolution source image. With it off, what you see in the preview is what gets saved.</p>
+      `,
+      gridExplain: `
+        <h3>Grid overlay</h3>
+        <p>Draws a fixed white Cartesian grid on the left (source) canvas and the image of that grid through the current inversion — or the composition of all inversion circles — on the right canvas.</p>
+        <p>A line through the inversion center maps to itself; every other straight line maps to a circle through the inversion center. With multiple circles the curves get richer. It's a quick way to see the geometric effect of the transformation.</p>
+        <p>The spacing is in source pixels and controls both the horizontal and vertical pitch on the left canvas.</p>
+      `,
       groupVizExplain: `
         <h3>Group exploration — anatomy of the Möbius transformation</h3>
         <p>With two inversion circles, their composition <code>σ₂ ∘ σ₁</code> is a single <b>Möbius transformation</b> (orientation-preserving). It falls into exactly one of three classes depending on how the two circles are positioned.</p>
@@ -2051,6 +2131,10 @@
   }
   function closeInfoModal() { infoModal.hidden = true; }
   groupVizInfoBtn.addEventListener('click', () => showInfoModal('groupVizExplain'));
+  document.getElementById('fillInfo').addEventListener('click', () => showInfoModal('fillExplain'));
+  document.getElementById('samplingInfo').addEventListener('click', () => showInfoModal('samplingExplain'));
+  document.getElementById('saveInfo').addEventListener('click', () => showInfoModal('saveExplain'));
+  document.getElementById('gridInfo').addEventListener('click', () => showInfoModal('gridExplain'));
   infoModalClose.addEventListener('click', closeInfoModal);
   infoModal.addEventListener('click', (e) => {
     if (e.target === infoModal) closeInfoModal();
