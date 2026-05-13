@@ -1043,6 +1043,7 @@
       saveFormat: '저장 포맷',
       saveFullRes: '원본 해상도로 저장',
       groupViz: '군 시각화',
+      groupVizDisabledHint: '반전원이 정확히 2개일 때만 사용할 수 있습니다.',
       orbitMode: '궤도 모드',
       clearOrbits: '궤도 지움',
       info: '설명',
@@ -1227,6 +1228,7 @@
       saveFormat: 'Save format',
       saveFullRes: 'Save at original resolution',
       groupViz: 'Group exploration',
+      groupVizDisabledHint: 'Available only when there are exactly two inversion circles.',
       orbitMode: 'Orbit mode',
       clearOrbits: 'Clear orbits',
       info: 'Info',
@@ -2497,12 +2499,31 @@
   });
 
   function updateOrbitControls() {
-    const show = shouldShowGroupViz();
+    const show = !!state.groupViz;
     orbitModeBtn.hidden = !show;
     clearOrbitBtn.hidden = !(show && state.orbitSeeds.length);
     if (orbitModeBtn) {
       if (state.orbitMode) orbitModeBtn.classList.add('active');
       else orbitModeBtn.classList.remove('active');
+    }
+  }
+
+  function updateGroupVizAvailability() {
+    const canEnable = state.circles.length === 2;
+    groupVizCheck.disabled = !canEnable;
+    if (canEnable) {
+      groupVizCheck.removeAttribute('title');
+    } else {
+      groupVizCheck.title = (T[currentLang] && T[currentLang].groupVizDisabledHint) || '';
+      if (state.groupViz) {
+        state.groupViz = false;
+        groupVizCheck.checked = false;
+        state.orbitMode = false;
+        state.orbitSeeds = [];
+        updateOrbitControls();
+        drawOverlay();
+        scheduleHashWrite();
+      }
     }
   }
 
@@ -3014,6 +3035,7 @@
       circleListEl.appendChild(btn);
     });
     removeCircleBtn.disabled = state.circles.length <= 1;
+    updateGroupVizAvailability();
     updateOrbitControls();
   }
 
