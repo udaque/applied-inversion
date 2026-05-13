@@ -6,7 +6,7 @@ A browser-based image **inversion** tool. Upload a photo, pick the center and ra
 
 🇰🇷 한국어 README는 [README.md](./README.md)를 참고하세요.
 
-**Version 0.3** — see [CHANGELOG.md](./CHANGELOG.md) for per-version changes.
+**Version 0.4** — see [CHANGELOG.md](./CHANGELOG.md) for per-version changes.
 
 ---
 
@@ -14,10 +14,19 @@ A browser-based image **inversion** tool. Upload a photo, pick the center and ra
 
 ### Core
 - 🖼 **Image upload** — file picker, click/tap the empty drop area, drag-and-drop anywhere on the page, or Ctrl/⌘+V from clipboard
-- 🎯 **Inversion circle controls** — click/tap, drag, or type numbers. Drag inside the active circle pans it, drag the dashed edge resizes (cursor rotates with angle)
+- 🎯 **Inversion circle controls** — click/tap, drag, or type numbers. Drag inside the active circle pans it, drag the dashed edge resizes (cursor rotates with angle). Radius is capped at 1000 px
 - 🔁 **Multiple inversion circles** — compose σ_N ∘ … ∘ σ_1, with an active indicator and number labels
 - ⚡ **Real-time result** rendered in a Web Worker so the main thread stays responsive
 - 🔍 **Zoom & pan on the result canvas** — wheel/pinch, drag, double-click/double-tap to reset, automatic hi-res re-render once the view settles
+- 📺 **Floating result mini-view (PIP, mobile)** — on narrow viewports the result canvas shrinks into a small floating thumbnail at the bottom-right so you can edit the source and see the result at the same time. Tap to expand to full screen, × hides the PIP entirely, and a round restore button brings it back. The PIP fades out automatically when your finger overlaps it during a source-canvas gesture
+
+### 🎬 Animation mode
+- Interpolate between two keyframes (first / last) and export the result as a video
+- Formats: **MP4 / WebM / GIF** (default MP4). MP4 / WebM are encoded with WebCodecs + mp4-muxer / webm-muxer, with a MediaRecorder fallback. GIF uses gifenc
+- Codec picker — H.264 Baseline / Main / High, VP9 / VP8, or **Auto** (picks the most compatible codec, useful on iOS Safari)
+- Easing — Linear / Ease-in-out (default) / Smoothstep / Smootherstep
+- **Original-resolution toggle** — render each frame from the uploaded image's full resolution instead of the preview (slower, larger files, better quality)
+- Duration is capped at 4 s for encoder stability
 
 ### Advanced options (organized into three sections)
 **Image**
@@ -31,11 +40,11 @@ A browser-based image **inversion** tool. Upload a photo, pick the center and ra
 
 **I/O**
 - Presets — save up to five named configurations to `localStorage`, with JSON export / import for backup or sharing
-- Save format — PNG / JPEG / WEBP
+- Save format — PNG / JPEG / WEBP / AVIF
 - Save at original resolution — re-render from the full source instead of the on-screen preview
 
 ### Save / share
-- 💾 PNG / JPEG / WEBP export; mobile routes through the Web Share sheet to the Photos library
+- 💾 PNG / JPEG / WEBP / AVIF export; mobile routes through the Web Share sheet to the Photos library
 - 📤 Share buttons — Bluesky · X · Threads · Instagram · device share · copy link
 - 🌐 **URL hash** — the full configuration is encoded in `#…`, so the URL is a shareable composition link
 - 💽 **Refresh recovery** — last image in IndexedDB, settings mirrored to localStorage
@@ -95,7 +104,8 @@ Detailed math is available behind the ⓘ next to the page title and beside each
 ## 🛠 Tips
 
 - **Fine tuning**: use the mouse/touch to get close, then dial in X% / Y% / radius numerically
-- **Save formats**: PNG or WEBP preserves alpha; JPEG composites onto white. iOS Photos library only accepts PNG / JPEG / HEIC (WEBP will go through Files instead).
+- **Save formats**: PNG / WEBP / AVIF preserve alpha; JPEG composites onto white. iOS Photos library only accepts PNG / JPEG / HEIC (WEBP / AVIF will go through Files instead).
+- **Animations**: try a short clip (1–2 s) first, then push the duration up. Original-resolution + high FPS + 4 s combined can stall mobile browsers. On iOS Safari, switch codecs if a save fails
 - **Presets**: storing a preset captures the composition (% positions), not the pixels, so the same composition applies to any image
 - **Share links**: copying the URL lets a recipient open the same composition; they upload their own image
 

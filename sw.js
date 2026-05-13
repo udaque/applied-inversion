@@ -1,5 +1,5 @@
 // Bump this when shipping changes to force clients to refresh the cache.
-const CACHE = 'applied-inversion-v3';
+const CACHE = 'applied-inversion-v4';
 const ASSETS = [
   './',
   './index.html',

@@ -5,6 +5,70 @@ Newest first.
 
 ---
 
+## [0.4] — 2026-05-13
+
+### Added
+- **Animation mode** — interpolate between two keyframes (first / last) and
+  export the result as a video. The header **애니메이션 / Animate** button
+  enters the mode and copies the current configuration into both keyframes;
+  a banner on top of the source panel switches between first and last and
+  exposes duration, FPS, format, codec, easing, and the
+  **영상 저장 / Save video** button. Each keyframe edits independently
+  (circle positions, radii, strength), and the renderer tweens the
+  in-between frames.
+- **MP4 / WebM / GIF** animation export. MP4 and WebM are encoded with
+  **WebCodecs + mp4-muxer / webm-muxer** (loaded on demand from jsDelivr),
+  with a **MediaRecorder** fallback for older browsers; GIF uses **gifenc**.
+  Default is MP4.
+- **Codec picker** — H.264 Baseline / Main / High for MP4, VP9 / VP8 for
+  WebM, plus **Auto** that probes `VideoEncoder.isConfigSupported` and picks
+  the most compatible codec. Lets users work around iOS Safari codec quirks
+  (one profile may fail while another works).
+- **Interpolation (easing) picker** — Linear, Ease-in-out (default),
+  Smoothstep, Smootherstep.
+- **Animation original-resolution toggle** — render each frame at the
+  uploaded image's full resolution instead of the preview. Bitrate is scaled
+  with pixel count (capped at ~50 Mbps). The hint warns that this is slower
+  and produces larger files.
+- **AVIF** added to the image save formats (next to PNG / JPEG / WEBP),
+  feature-detected via `canvas.toBlob`.
+- **Floating PIP for the result canvas on narrow viewports** (≤ 900 px).
+  The right panel shrinks into a small floating thumbnail at the bottom-right
+  corner so the result is visible while editing the source. Tap to expand
+  to a full-screen view with zoom controls; × collapses back; a second ×
+  hides the PIP entirely, and a round restore button at the same corner
+  brings it back. The PIP fades to 30% while the user's pointer overlaps it
+  during a source-canvas gesture, and animates toward / from the restore
+  button when hidden / shown.
+
+### Changed
+- **Animation banner layout** — animation controls (duration, FPS, format,
+  codec, easing, original-resolution, save) live in a dedicated banner above
+  the source canvas. Circle add / remove buttons are locked on the last
+  keyframe (with a title hint) so the circle count is set on the first frame.
+- **Duration is capped at 4 seconds** — encoders get less stable beyond that
+  on some mobile browsers.
+- **Radius is capped at 1000 px app-wide** — values entered above 1000 are
+  clamped with a toast, both for live editing and for animation frames.
+- **Animation progress bar** uses an explicit `width: %` per frame instead
+  of a CSS transition, so progress is visible the whole way through (no more
+  "stuck at 0, then jumps to 100" behaviour).
+- **cx / cy / radius inputs stay on one row at every viewport width** — the
+  controls were collapsing onto separate lines on narrow mobile.
+- Animation-explain modal no longer mentions the radius cap (it applies
+  app-wide), and the format line now lists GIF too.
+- Removed dead i18n keys (`animModeLabel`, `animEnter`, `animFormatExplain`,
+  `animEasingExplain`).
+
+### Fixed
+- **iOS Safari MP4 false-negative** — previously the MP4 option said
+  "not supported" even though the encoder worked. Detection now consults
+  both `MediaRecorder.isTypeSupported` and `VideoEncoder.isConfigSupported`.
+- Animation render no longer freezes on the first frame — pending edits on
+  the active keyframe are flushed before the render loop starts.
+
+---
+
 ## [0.3] — 2026-05-13
 
 ### Added
