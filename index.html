@@ -1495,43 +1495,67 @@
     rightOverlay.style.display = 'block';
     const w = state.previewW;
     const h = state.previewH;
-    const cx = state.cx;
-    const cy = state.cy;
-    const r = state.r;
-    const r2 = r * r;
     let s = parseFloat(gridSpacing.value);
     if (!isFinite(s) || s <= 1) s = Math.max(8, Math.min(w, h) / 12);
 
     octx.clearRect(0, 0, w, h);
-
     octx.strokeStyle = 'rgba(255,255,255,0.7)';
     octx.lineWidth = 1;
-    octx.beginPath();
-    for (let x = 0; x <= w + 0.5; x += s) {
-      const d = x - cx;
-      if (Math.abs(d) < 0.5) {
-        octx.moveTo(x, 0);
-        octx.lineTo(x, h);
-      } else {
-        const rc = r2 / (2 * Math.abs(d));
-        const ccx = cx + r2 / (2 * d);
-        octx.moveTo(ccx + rc, cy);
-        octx.arc(ccx, cy, rc, 0, Math.PI * 2);
+
+    const cs = state.circles;
+    const SAMPLES = 240;
+    const LIMIT = 1e6;
+
+    function compose(px, py) {
+      let qx = px, qy = py;
+      for (let i = 0; i < cs.length; i++) {
+        const c = cs[i];
+        const dx = qx - c.cx;
+        const dy = qy - c.cy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < 0.5) return null;
+        const k = c.r * c.r / d2;
+        qx = c.cx + dx * k;
+        qy = c.cy + dy * k;
       }
+      if (!isFinite(qx) || !isFinite(qy)) return null;
+      if (Math.abs(qx) > LIMIT || Math.abs(qy) > LIMIT) return null;
+      return { x: qx, y: qy };
+    }
+
+    function drawMappedLine(sampler) {
+      octx.beginPath();
+      let inPath = false;
+      let prev = null;
+      for (let i = 0; i < SAMPLES; i++) {
+        const t = i / (SAMPLES - 1);
+        const p = sampler(t);
+        const q = p ? compose(p.x, p.y) : null;
+        if (!q) {
+          inPath = false;
+          prev = null;
+          continue;
+        }
+        if (inPath && prev && Math.hypot(q.x - prev.x, q.y - prev.y) > w + h) {
+          // Large jump implies passing through singularity; break the path
+          octx.moveTo(q.x, q.y);
+        } else if (inPath) {
+          octx.lineTo(q.x, q.y);
+        } else {
+          octx.moveTo(q.x, q.y);
+          inPath = true;
+        }
+        prev = q;
+      }
+      octx.stroke();
+    }
+
+    for (let x = 0; x <= w + 0.5; x += s) {
+      drawMappedLine((t) => ({ x, y: t * h }));
     }
     for (let y = 0; y <= h + 0.5; y += s) {
-      const d = y - cy;
-      if (Math.abs(d) < 0.5) {
-        octx.moveTo(0, y);
-        octx.lineTo(w, y);
-      } else {
-        const rc = r2 / (2 * Math.abs(d));
-        const ccy = cy + r2 / (2 * d);
-        octx.moveTo(cx + rc, ccy);
-        octx.arc(cx, ccy, rc, 0, Math.PI * 2);
-      }
+      drawMappedLine((t) => ({ x: t * w, y }));
     }
-    octx.stroke();
   }
 
   function updateInputs() {
