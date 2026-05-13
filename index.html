@@ -439,6 +439,7 @@
 <body>
 <header>
   <h1 id="appTitle">Applied Inversion</h1>
+  <button type="button" class="info-icon" id="aboutInfo" data-i18n-title="info" title="설명">i</button>
   <div class="toolbar">
     <select id="langSelect" title="Language">
       <option value="ko">한국어</option>
@@ -836,6 +837,26 @@
       typeElliptic: 'Elliptic',
       typeParabolic: 'Parabolic',
       typeHyperbolic: 'Hyperbolic',
+      aboutExplain: `
+        <h3>Applied Inversion</h3>
+        <p>평면 기하학의 고전적 변환 중 하나인 <b>반전(inversion)</b>을 실제 이미지에 적용해보는 웹앱입니다.</p>
+        <h4>반전이란?</h4>
+        <p>평면 위에 중심 <i>O</i>와 반지름 <i>r</i>인 원이 주어졌을 때, 점 <i>P</i> (≠ <i>O</i>)는 반직선 <i>OP</i> 위에 있는 점 <i>Q</i>로 대응됩니다. 단,</p>
+        <p style="text-align:center; font-family:Georgia,serif; font-size:15px;"><code>|OP| · |OQ| = r²</code></p>
+        <h4>주요 성질</h4>
+        <ul>
+          <li><b>대합(involution)</b> — 반전을 두 번 적용하면 원래 점으로 돌아옵니다 (<code>σ ∘ σ = id</code>).</li>
+          <li><b>반전원 위의 점은 고정</b> — <code>|OP| = r</code> 인 점은 자기 자신으로 매핑됩니다.</li>
+          <li><b>안과 밖이 교환</b> — 원 안의 점은 밖으로, 밖의 점은 안으로 매핑되며, 중심 <i>O</i>는 무한대에 대응됩니다.</li>
+          <li><b>각도 보존 (conformal)</b> — 두 곡선이 만나는 각은 그대로 유지됩니다.</li>
+          <li><b>원과 직선의 보존</b> — 원과 직선은 다시 원·직선으로 매핑됩니다. 중심을 지나는 직선은 자기 자신으로, 중심을 지나지 않는 직선은 중심을 지나는 원으로, 중심을 지나는 원은 직선으로, 그 외 원은 다른 원으로.</li>
+        </ul>
+        <h4>이 도구가 하는 것</h4>
+        <p>반전은 오랫동안 수학책 속에 머물러 있던 추상적 변환이지만, 실제 사진에 적용하면 익숙한 공간이 휘어지고 안과 밖이 뒤집히는 흥미로운 결과가 됩니다. 직접 만져보지 않으면 알기 어려운 종류의 시각적 경험이에요.</p>
+        <p>또한 그리드 오버레이, 군 시각화 같은 보조 기능들은 반전과 Möbius 변환의 수학적 원리를 시각화로 보여줘서, 종이 위의 수식이 평면을 어떻게 휘게 하는지 직관적으로 이해할 수 있게 합니다.</p>
+        <p>여러 원을 합성하면 더 복잡한 Möbius 변환이 만들어지고, 그 한계에는 Apollonian gasket 같은 프랙탈과 쌍곡기하학의 세계가 이어집니다.</p>
+        <p style="margin-top:14px; color:var(--muted); font-size:12px;">개별 옵션의 자세한 설명은 고급 옵션의 각 항목 ⓘ 버튼에서 볼 수 있습니다.</p>
+      `,
       strengthExplain: `
         <h3>강도</h3>
         <p>완전한 반전과 원본 사이를 보간하는 강도 <code>t</code> 값입니다. 출력 픽셀 Q에 대해 원본 좌표 P는 다음과 같이 계산됩니다.</p>
@@ -962,6 +983,26 @@
       typeElliptic: 'Elliptic',
       typeParabolic: 'Parabolic',
       typeHyperbolic: 'Hyperbolic',
+      aboutExplain: `
+        <h3>Applied Inversion</h3>
+        <p>A web app that lets you apply <b>inversion</b> — one of the classical transformations of plane geometry — to a real image.</p>
+        <h4>What is inversion?</h4>
+        <p>Given a circle in the plane with center <i>O</i> and radius <i>r</i>, every point <i>P</i> (≠ <i>O</i>) is mapped to the point <i>Q</i> on the ray <i>OP</i> that satisfies</p>
+        <p style="text-align:center; font-family:Georgia,serif; font-size:15px;"><code>|OP| · |OQ| = r²</code></p>
+        <h4>Key properties</h4>
+        <ul>
+          <li><b>Involution</b> — applying the inversion twice returns every point to itself (<code>σ ∘ σ = id</code>).</li>
+          <li><b>Points on the circle are fixed</b> — any point with <code>|OP| = r</code> maps to itself.</li>
+          <li><b>Inside and outside swap</b> — points inside the circle map to points outside, and vice versa; the center <i>O</i> corresponds to infinity.</li>
+          <li><b>Conformal</b> — angles between curves are preserved.</li>
+          <li><b>Circles and lines stay circles and lines</b> — a line through the center maps to itself; a line not through the center becomes a circle through the center; a circle through the center becomes a line; every other circle becomes another circle.</li>
+        </ul>
+        <h4>What this tool is for</h4>
+        <p>For a long time inversion lived only in geometry textbooks. Applied to a real photograph it produces striking visuals: familiar spaces bend, interiors flip out and exteriors flip in. It's the kind of thing you have to play with to really understand.</p>
+        <p>Tools like the grid overlay and the group exploration mode visualize the math behind inversion and Möbius transformations, so the formulas on paper become something you can see acting on the plane.</p>
+        <p>Composing several inversion circles gives a richer Möbius transformation, and following that thread leads further into fractals like the Apollonian gasket and the world of hyperbolic geometry.</p>
+        <p style="margin-top:14px; color:var(--muted); font-size:12px;">Detailed explanations of each option are available from the ⓘ buttons in the advanced options panel.</p>
+      `,
       strengthExplain: `
         <h3>Strength</h3>
         <p>Interpolates between the unmodified image and a full inversion. For each output pixel Q the source coordinate P is computed as</p>
@@ -2156,6 +2197,7 @@
   }
   function closeInfoModal() { infoModal.hidden = true; }
   groupVizInfoBtn.addEventListener('click', () => showInfoModal('groupVizExplain'));
+  document.getElementById('aboutInfo').addEventListener('click', () => showInfoModal('aboutExplain'));
   document.getElementById('strengthInfo').addEventListener('click', () => showInfoModal('strengthExplain'));
   document.getElementById('fillInfo').addEventListener('click', () => showInfoModal('fillExplain'));
   document.getElementById('samplingInfo').addEventListener('click', () => showInfoModal('samplingExplain'));
