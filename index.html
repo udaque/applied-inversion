@@ -1217,16 +1217,16 @@
         <p>두 키프레임(첫 / 마지막) 사이의 반전원·강도 변화를 영상으로 만듭니다.</p>
         <h4>사용법</h4>
         <ul>
-          <li><b>애니메이션 시작</b>을 누르면 모드 진입. 현재 상태가 첫 프레임과 마지막 프레임 둘 다에 복사됩니다.</li>
-          <li>상단 배너에서 <b>첫 프레임 / 마지막 프레임</b>을 전환하며 각각 따로 편집 (반전원 위치·개수·반지름, 강도 등).</li>
-          <li>배너에서 <b>길이</b>(초)와 <b>FPS</b>를 조절. 총 프레임 수 = 길이 × FPS.</li>
-          <li>상단의 <b>저장</b>을 누르면 보간된 프레임을 한 장씩 렌더링해 영상 파일로 내보냅니다.</li>
+          <li>헤더의 <b>애니메이션</b> 버튼을 누르면 모드 진입. 현재 상태가 첫 / 마지막 두 키프레임에 동일하게 복사됩니다.</li>
+          <li>상단 배너에서 <b>첫 프레임 / 마지막 프레임</b>을 전환하며 각각 따로 편집 (반전원 위치·반지름, 강도 등).</li>
+          <li>배너에서 <b>길이</b>(초), <b>FPS</b>, <b>포맷</b>(MP4 / WebM), <b>보간</b> 방식을 설정. 총 프레임 수 = 길이 × FPS.</li>
+          <li>배너의 <b>영상 저장</b>을 누르면 보간된 프레임을 한 장씩 렌더링해 영상 파일을 내보냅니다.</li>
         </ul>
-        <h4>참고</h4>
+        <h4>제약</h4>
         <ul>
-          <li>원 개수가 두 프레임에서 다르면 부족한 쪽은 반지름 0으로 채워, 자연스럽게 나타나거나 사라집니다.</li>
-          <li>저장 해상도는 현재 미리보기 기준이며 (긴 변 최대 900 px), 인코딩이 끝나면 파일이 자동 다운로드됩니다.</li>
-          <li>v1은 단일 키프레임 쌍만 지원합니다. 더 복잡한 시퀀스는 추후 추가 예정.</li>
+          <li><b>반전원 개수는 두 키프레임에서 같아야 합니다.</b> 마지막 프레임에서는 추가·삭제 버튼이 잠겨 있으니, 개수 변경은 <b>첫 프레임</b>에서 먼저 정한 뒤 마지막 프레임으로 가서 위치·반지름·강도만 다르게 편집하세요.</li>
+          <li>저장 해상도는 현재 미리보기 기준입니다 (긴 변 최대 900 px).</li>
+          <li>v1은 두 개의 키프레임만 지원합니다.</li>
         </ul>
       `,
       animFormatExplain: `
@@ -1459,19 +1459,19 @@
       animMp4Unsupported: 'This browser cannot encode MP4 directly; falling back to WebM.',
       animExplain: `
         <h3>Animation mode</h3>
-        <p>Tween between two keyframes (first / last) — circle positions, count, strength — and export the in-between frames as a video.</p>
+        <p>Tween between two keyframes (first / last) — circle positions, radii, and strength — and export the result as a video.</p>
         <h4>How to use</h4>
         <ul>
-          <li>Click <b>Start animation</b> to enter the mode. The current configuration is copied into both the first and last keyframes.</li>
-          <li>Use the banner at the top of the source panel to switch between <b>First / Last</b> and edit each frame separately (circle positions, count, radius, strength, …).</li>
-          <li>The banner also exposes the animation's <b>Duration</b> (seconds) and <b>FPS</b>. Total frames = Duration × FPS.</li>
-          <li>Pressing <b>Save</b> renders each interpolated frame and writes the result to a video file.</li>
+          <li>Click the header <b>Animate</b> button to enter the mode. The current configuration is copied into both keyframes.</li>
+          <li>Use the banner at the top of the source panel to switch between <b>First / Last</b> and edit each frame separately (circle positions, radii, strength, …).</li>
+          <li>The banner also exposes <b>Duration</b> (seconds), <b>FPS</b>, <b>Format</b> (MP4 / WebM), and the <b>Interpolation</b> curve. Total frames = Duration × FPS.</li>
+          <li>Press the banner's <b>Save video</b> button to render every interpolated frame and write the result to a video file.</li>
         </ul>
-        <h4>Notes</h4>
+        <h4>Constraints</h4>
         <ul>
-          <li>If the two frames differ in circle count, the shorter side is padded with radius-0 circles so circles smoothly appear or disappear.</li>
-          <li>v1 renders at the current preview resolution (≤ 900 px long side) and downloads automatically when finished.</li>
-          <li>Only a single first/last pair is supported in v1; richer sequences may come later.</li>
+          <li><b>The two keyframes must have the same number of circles.</b> Add / remove buttons are locked on the last frame, so set the count on the <b>first frame</b> first, then switch to the last frame and only edit positions, radii, and strength there.</li>
+          <li>v1 renders at the current preview resolution (≤ 900 px on the longer side).</li>
+          <li>Only one pair of keyframes is supported in v1.</li>
         </ul>
       `,
       animFormatExplain: `
