@@ -3611,8 +3611,11 @@
     recordCanvas.width = w;
     recordCanvas.height = h;
     const rctx = recordCanvas.getContext('2d');
-    const stream = recordCanvas.captureStream(fps);
+    const stream = recordCanvas.captureStream(0);
+    const videoTrack = stream.getVideoTracks()[0];
     const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
+    let recorderErr = null;
+    recorder.onerror = (e) => { recorderErr = e.error || e; };
     const chunks = [];
     recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     const stopped = new Promise((res) => { recorder.onstop = res; });
@@ -3638,10 +3641,16 @@
         const { buffer, w: rw, h: rh } = await renderFrameOnce(params);
         const id = new ImageData(new Uint8ClampedArray(buffer), rw, rh);
         rctx.putImageData(id, 0, 0);
+        if (videoTrack && typeof videoTrack.requestFrame === 'function') {
+          videoTrack.requestFrame();
+        }
         showAnimProgress(i + 1, totalFrames);
+        // Yield to the browser so paint runs and the recorder picks up the frame
+        await new Promise((r) => requestAnimationFrame(r));
         const target = startedAt + ((i + 1) / fps) * 1000;
         const wait = target - performance.now();
         if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+        if (recorderErr) throw recorderErr;
       }
     } catch (err) {
       console.error(err);
