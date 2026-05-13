@@ -903,6 +903,7 @@
             <option value="image/png">PNG</option>
             <option value="image/jpeg">JPEG</option>
             <option value="image/webp">WEBP</option>
+            <option value="image/avif">AVIF</option>
           </select>
         </div>
 
@@ -1272,6 +1273,7 @@
       samplingNearest: 'Nearest (빠름)',
       samplingBilinear: 'Bilinear (부드러움)',
       saveFormat: '저장 포맷',
+      formatUnsupported: '미지원',
       saveFullRes: '원본 해상도로 저장',
       groupViz: '군 시각화',
       groupVizDisabledHint: '반전원이 정확히 2개일 때만 사용할 수 있습니다.',
@@ -1341,6 +1343,7 @@
           <li><b>PNG</b> (기본) — 무손실 압축, 투명(알파) 지원. 결과를 다시 편집하거나 정밀한 비교에 좋습니다.</li>
           <li><b>JPEG</b> — 손실 압축, 파일이 작습니다. 알파가 없어서 투명 영역은 자동으로 흰 배경에 합성됩니다.</li>
           <li><b>WEBP</b> — 더 좋은 압축률에 투명도 지원. 대부분의 모던 브라우저/SNS가 받아주지만 iOS 사진 보관함 같은 일부 환경에서는 호환되지 않을 수 있습니다.</li>
+          <li><b>AVIF</b> — 가장 모던한 포맷. WebP보다 30~50% 작으면서 화질·투명·HDR 지원. 브라우저가 인코딩을 지원하지 않으면 옵션이 비활성화됩니다.</li>
         </ul>
         <h4>원본 해상도로 저장</h4>
         <p>미리보기는 빠른 인터랙션을 위해 긴 변 900px 이하로 축소된 결과를 보여줍니다. 이 옵션을 켜면 저장 시 원본 해상도의 소스 이미지에 다시 반전 변환을 적용한 뒤 내보냅니다. 끄면 미리보기 그대로 저장됩니다.</p>
@@ -1529,6 +1532,7 @@
       samplingNearest: 'Nearest (fast)',
       samplingBilinear: 'Bilinear (smooth)',
       saveFormat: 'Save format',
+      formatUnsupported: 'unsupported',
       saveFullRes: 'Save at original resolution',
       groupViz: 'Group exploration',
       groupVizDisabledHint: 'Available only when there are exactly two inversion circles.',
@@ -1598,6 +1602,7 @@
           <li><b>PNG</b> (default) — lossless, supports transparency. Good for further editing or precise comparison.</li>
           <li><b>JPEG</b> — lossy, smaller files. Has no alpha channel; transparent regions are composited onto white.</li>
           <li><b>WEBP</b> — better compression than PNG with alpha. Most modern browsers and social platforms accept it, but a few environments (e.g. the iOS Photos library) don't.</li>
+          <li><b>AVIF</b> — the most modern format. 30–50% smaller than WebP at similar quality, with transparency and HDR support. Disabled if the current browser can't encode AVIF.</li>
         </ul>
         <h4>Save at original resolution</h4>
         <p>The preview is rendered at ≤ 900 px on the longer side for fast interaction. With this option on, save re-renders the inversion from the full-resolution source image. With it off, what you see in the preview is what gets saved.</p>
@@ -3441,6 +3446,23 @@
       redo();
     }
   });
+
+  (async function probeAvifSupport() {
+    const opt = formatSelect.querySelector('option[value="image/avif"]');
+    if (!opt) return;
+    const supported = await new Promise((resolve) => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = 4; c.height = 4;
+        c.toBlob((blob) => resolve(!!blob && blob.type === 'image/avif'), 'image/avif');
+      } catch { resolve(false); }
+    });
+    if (!supported) {
+      opt.disabled = true;
+      opt.textContent = 'AVIF (' + ((T[currentLang] && T[currentLang].formatUnsupported) || 'unsupported') + ')';
+      if (formatSelect.value === 'image/avif') formatSelect.value = 'image/png';
+    }
+  })();
 
   saveBtn.addEventListener('click', async () => {
     if (!state.previewData) return;
