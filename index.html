@@ -401,6 +401,20 @@
     font-size: 12px;
     font-family: inherit;
   }
+  .anim-select {
+    background: #0a0d11;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: inherit;
+  }
+  .anim-row-actions {
+    justify-content: flex-end;
+    margin-top: 4px !important;
+  }
+  .anim-save { font-size: 13px; padding: 6px 14px; }
   .anim-field .suffix { color: var(--muted); }
   .anim-exit {
     margin-left: auto;
@@ -695,6 +709,7 @@
     <label for="fileInput" class="upload-btn" data-i18n="openImage" data-i18n-title="openImageTitle" title="이미지 업로드">이미지</label>
     <button id="undoBtn" type="button" data-i18n-title="undo" disabled>↶</button>
     <button id="redoBtn" type="button" data-i18n-title="redo" disabled>↷</button>
+    <button id="animBtn" type="button" data-i18n="animBtnLabel" data-i18n-title="animBtnTitle" title="애니메이션 시작">애니메이션</button>
     <button id="saveBtn" class="primary" data-i18n="save">저장</button>
     <div class="share-wrap" id="shareWrap">
       <button id="shareBtn" data-i18n="share">공유</button>
@@ -770,8 +785,26 @@
           <input type="number" id="animDuration" min="0.5" max="30" step="0.5" value="3"><span class="suffix" data-i18n="animSec">초</span>
         </label>
         <label class="anim-field"><span data-i18n="animFps">FPS</span>
-          <input type="number" id="animFps" min="1" max="60" step="1" value="30">
+          <input type="number" id="animFps" min="1" max="60" step="1" value="60">
         </label>
+        <label class="anim-field"><span data-i18n="animFormat">포맷</span>
+          <select id="animFormat" class="anim-select">
+            <option value="mp4" selected>MP4</option>
+            <option value="webm">WebM</option>
+          </select>
+        </label>
+        <label class="anim-field"><span data-i18n="animEasingLabel">보간</span>
+          <select id="animEasing" class="anim-select">
+            <option value="linear" data-i18n="easingLinear">선형</option>
+            <option value="easeInOut" selected data-i18n="easingEaseInOut">Ease-in-out</option>
+            <option value="smoothstep" data-i18n="easingSmoothstep">Smoothstep</option>
+            <option value="smootherstep" data-i18n="easingSmootherstep">Smootherstep</option>
+          </select>
+        </label>
+      </div>
+      <div class="anim-row anim-row-actions">
+        <button type="button" id="saveAnimBtn" class="primary anim-save" data-i18n="animSaveVideo">영상 저장</button>
+        <button type="button" class="info-icon" id="animBannerInfo" data-i18n-title="info" title="설명">i</button>
       </div>
     </div>
     <div class="canvas-wrap" id="leftWrap">
@@ -874,34 +907,6 @@
         <button type="button" class="info-icon" id="saveFullResInfo" data-i18n-title="info" title="설명">i</button>
         <div class="option-ctrl">
           <input type="checkbox" id="saveFullRes" checked>
-        </div>
-
-        <h4 class="section-heading" data-i18n="sectionAnim">애니메이션</h4>
-
-        <span class="option-label" data-i18n="animModeLabel">애니메이션</span>
-        <button type="button" class="info-icon" id="animInfo" data-i18n-title="info" title="설명">i</button>
-        <div class="option-ctrl">
-          <button type="button" id="enterAnimBtn" data-i18n="animEnter">애니메이션 시작</button>
-        </div>
-
-        <label class="option-label" for="animFormat" data-i18n="animFormat">포맷</label>
-        <button type="button" class="info-icon" id="animFormatInfo" data-i18n-title="info" title="설명">i</button>
-        <div class="option-ctrl">
-          <select id="animFormat">
-            <option value="mp4" selected>MP4</option>
-            <option value="webm">WebM</option>
-          </select>
-        </div>
-
-        <label class="option-label" for="animEasing" data-i18n="animEasingLabel">보간</label>
-        <button type="button" class="info-icon" id="animEasingInfo" data-i18n-title="info" title="설명">i</button>
-        <div class="option-ctrl">
-          <select id="animEasing">
-            <option value="linear" data-i18n="easingLinear">선형</option>
-            <option value="easeInOut" selected data-i18n="easingEaseInOut">Ease-in-out</option>
-            <option value="smoothstep" data-i18n="easingSmoothstep">Smoothstep</option>
-            <option value="smootherstep" data-i18n="easingSmootherstep">Smootherstep</option>
-          </select>
         </div>
       </div>
     </details>
@@ -1192,6 +1197,10 @@
       animSec: '초',
       animModeLabel: '애니메이션',
       animEnter: '애니메이션 시작',
+      animBtnLabel: '애니메이션',
+      animBtnTitle: '애니메이션 시작',
+      animSaveVideo: '영상 저장',
+      animLastLockHint: '마지막 프레임에서는 반전원 개수를 바꿀 수 없습니다. 첫 프레임에서 조정하세요.',
       animFormat: '포맷',
       animEasingLabel: '보간',
       easingLinear: '선형',
@@ -1433,6 +1442,10 @@
       animSec: 's',
       animModeLabel: 'Animation',
       animEnter: 'Start animation',
+      animBtnLabel: 'Animate',
+      animBtnTitle: 'Start animation',
+      animSaveVideo: 'Save video',
+      animLastLockHint: 'The number of circles is locked on the last frame. Adjust it on the first frame.',
       animFormat: 'Format',
       animEasingLabel: 'Interpolation',
       easingLinear: 'Linear',
@@ -3307,7 +3320,16 @@
       btn.addEventListener('click', () => setActiveCircle(i));
       circleListEl.appendChild(btn);
     });
-    removeCircleBtn.disabled = state.circles.length <= 1;
+    const lockCount = !!(state.animation && state.animation.active && state.animation.editingFrame === 'last');
+    removeCircleBtn.disabled = lockCount || state.circles.length <= 1;
+    addCircleBtn.disabled = lockCount;
+    if (lockCount) {
+      removeCircleBtn.title = (T[currentLang] && T[currentLang].animLastLockHint) || '';
+      addCircleBtn.title = (T[currentLang] && T[currentLang].animLastLockHint) || '';
+    } else {
+      removeCircleBtn.removeAttribute('title');
+      addCircleBtn.removeAttribute('title');
+    }
     updateGroupVizAvailability();
     updateOrbitControls();
   }
@@ -3376,10 +3398,6 @@
 
   saveBtn.addEventListener('click', async () => {
     if (!state.previewData) return;
-    if (state.animation && state.animation.active) {
-      await renderAnimation();
-      return;
-    }
     saveBtn.disabled = true;
     const orig = saveBtn.textContent;
     saveBtn.textContent = T[currentLang].saving;
@@ -3412,15 +3430,14 @@
 
   // ----- Animation mode -----
   const animBanner = document.getElementById('animBanner');
-  const enterAnimBtn = document.getElementById('enterAnimBtn');
+  const animBtn = document.getElementById('animBtn');
+  const saveAnimBtn = document.getElementById('saveAnimBtn');
   const exitAnimBtn = document.getElementById('exitAnimBtn');
   const animDurationInput = document.getElementById('animDuration');
   const animFpsInput = document.getElementById('animFps');
   const animFormatSelect = document.getElementById('animFormat');
   const animEasingSelect = document.getElementById('animEasing');
-  const animInfoBtn = document.getElementById('animInfo');
-  const animFormatInfoBtn = document.getElementById('animFormatInfo');
-  const animEasingInfoBtn = document.getElementById('animEasingInfo');
+  const animBannerInfoBtn = document.getElementById('animBannerInfo');
   const animRenderModal = document.getElementById('animRenderModal');
   const animProgressFill = document.getElementById('animProgressFill');
   const animProgressText = document.getElementById('animProgressText');
@@ -3443,9 +3460,7 @@
   }
   ensureFormatAvailability();
 
-  animInfoBtn.addEventListener('click', () => showInfoModal('animExplain'));
-  animFormatInfoBtn.addEventListener('click', () => showInfoModal('animFormatExplain'));
-  animEasingInfoBtn.addEventListener('click', () => showInfoModal('animEasingExplain'));
+  animBannerInfoBtn.addEventListener('click', () => showInfoModal('animExplain'));
 
   function captureFrameState() {
     return {
@@ -3481,12 +3496,14 @@
     };
     setFrameTabActive('first');
     animBanner.hidden = false;
-    enterAnimBtn.disabled = true;
+    animBtn.hidden = true;
+    renderCircleList();
   }
   function exitAnimationMode() {
     state.animation = null;
     animBanner.hidden = true;
-    enterAnimBtn.disabled = false;
+    animBtn.hidden = false;
+    renderCircleList();
   }
   function switchAnimFrame(name) {
     if (!state.animation || state.animation.editingFrame === name) return;
@@ -3499,9 +3516,13 @@
     frameTabBtns.forEach((b) => b.classList.toggle('active', b.dataset.frame === name));
   }
 
-  enterAnimBtn.addEventListener('click', enterAnimationMode);
+  animBtn.addEventListener('click', enterAnimationMode);
   exitAnimBtn.addEventListener('click', exitAnimationMode);
-  frameTabBtns.forEach((b) => b.addEventListener('click', () => switchAnimFrame(b.dataset.frame)));
+  saveAnimBtn.addEventListener('click', renderAnimation);
+  frameTabBtns.forEach((b) => b.addEventListener('click', () => {
+    switchAnimFrame(b.dataset.frame);
+    renderCircleList();
+  }));
 
   const easings = {
     linear: t => t,
