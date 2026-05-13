@@ -157,6 +157,16 @@
     main > section.right-panel.pip-hidden:not(.pip-expanded) {
       display: none;
     }
+    main > section.right-panel.pip-hiding:not(.pip-expanded) {
+      animation: pipHideToCorner 0.22s ease forwards;
+      transform-origin: bottom right;
+      pointer-events: none;
+    }
+    main > section.right-panel.pip-revealing:not(.pip-expanded) {
+      animation: pipShowFromCorner 0.22s ease forwards;
+      transform-origin: bottom right;
+      pointer-events: none;
+    }
     main > section.right-panel.has-image:not(.pip-expanded):not(.pip-hidden) .pip-hide {
       display: inline-flex;
       align-items: center;
@@ -233,6 +243,14 @@
     font-size: 11px;
     padding: 3px 4px;
     pointer-events: none;
+  }
+  @keyframes pipHideToCorner {
+    from { transform: scale(1); opacity: 1; border-radius: 10px; }
+    to   { transform: scale(0.27); opacity: 0; border-radius: 50%; }
+  }
+  @keyframes pipShowFromCorner {
+    from { transform: scale(0.27); opacity: 0; border-radius: 50%; }
+    to   { transform: scale(1); opacity: 1; border-radius: 10px; }
   }
   .panel {
     background: var(--panel);
@@ -4316,9 +4334,33 @@
       resetView();
     });
   }
-  function setPipHidden(hidden) {
-    rightPanel.classList.toggle('pip-hidden', hidden);
-    pipShowBtn.hidden = !hidden;
+  const PIP_ANIM_MS = 220;
+  let pipAnimTimer = 0;
+  function setPipHidden(hidden, animate = true) {
+    if (pipAnimTimer) { clearTimeout(pipAnimTimer); pipAnimTimer = 0; }
+    rightPanel.classList.remove('pip-hiding', 'pip-revealing');
+    if (!animate || !isPipViewport()) {
+      rightPanel.classList.toggle('pip-hidden', hidden);
+      pipShowBtn.hidden = !hidden;
+      return;
+    }
+    if (hidden) {
+      rightPanel.classList.add('pip-hiding');
+      pipAnimTimer = setTimeout(() => {
+        rightPanel.classList.remove('pip-hiding');
+        rightPanel.classList.add('pip-hidden');
+        pipShowBtn.hidden = false;
+        pipAnimTimer = 0;
+      }, PIP_ANIM_MS);
+    } else {
+      rightPanel.classList.remove('pip-hidden');
+      pipShowBtn.hidden = true;
+      rightPanel.classList.add('pip-revealing');
+      pipAnimTimer = setTimeout(() => {
+        rightPanel.classList.remove('pip-revealing');
+        pipAnimTimer = 0;
+      }, PIP_ANIM_MS);
+    }
   }
   rightWrap.addEventListener('click', (e) => {
     if (!isPipViewport()) return;
