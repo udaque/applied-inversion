@@ -432,7 +432,6 @@
     height: 100%;
     background: var(--accent);
     width: 0%;
-    transition: width 0.1s linear;
   }
   .radio-row, .check-row {
     display: flex;
@@ -782,7 +781,7 @@
       </div>
       <div class="anim-row">
         <label class="anim-field"><span data-i18n="animDuration">길이</span>
-          <input type="number" id="animDuration" min="0.5" max="30" step="0.5" value="3"><span class="suffix" data-i18n="animSec">초</span>
+          <input type="number" id="animDuration" min="0.5" max="4" step="0.5" value="3"><span class="suffix" data-i18n="animSec">초</span>
         </label>
         <label class="anim-field"><span data-i18n="animFps">FPS</span>
           <input type="number" id="animFps" min="1" max="60" step="1" value="60">
@@ -792,6 +791,9 @@
             <option value="mp4" selected>MP4</option>
             <option value="webm">WebM</option>
           </select>
+        </label>
+        <label class="anim-field"><span data-i18n="animCodec">코덱</span>
+          <select id="animCodec" class="anim-select"></select>
         </label>
         <label class="anim-field"><span data-i18n="animEasingLabel">보간</span>
           <select id="animEasing" class="anim-select">
@@ -1201,6 +1203,9 @@
       animBtnTitle: '애니메이션 시작',
       animSaveVideo: '영상 저장',
       animLastLockHint: '마지막 프레임에서는 반전원 개수를 바꿀 수 없습니다. 첫 프레임에서 조정하세요.',
+      animCodec: '코덱',
+      codecAuto: '자동',
+      radiusCappedToast: `반지름은 최대 ${1000}px까지만 가능합니다.`,
       animFormat: '포맷',
       animEasingLabel: '보간',
       easingLinear: '선형',
@@ -1219,15 +1224,18 @@
         <ul>
           <li>헤더의 <b>애니메이션</b> 버튼을 누르면 모드 진입. 현재 상태가 첫 / 마지막 두 키프레임에 동일하게 복사됩니다.</li>
           <li>상단 배너에서 <b>첫 프레임 / 마지막 프레임</b>을 전환하며 각각 따로 편집 (반전원 위치·반지름, 강도 등).</li>
-          <li>배너에서 <b>길이</b>(초), <b>FPS</b>, <b>포맷</b>(MP4 / WebM), <b>보간</b> 방식을 설정. 총 프레임 수 = 길이 × FPS.</li>
+          <li>배너에서 <b>길이</b>(초), <b>FPS</b>, <b>포맷</b>(MP4 / WebM), <b>코덱</b>, <b>보간</b> 방식을 설정. 총 프레임 수 = 길이 × FPS.</li>
           <li>배너의 <b>영상 저장</b>을 누르면 보간된 프레임을 한 장씩 렌더링해 영상 파일을 내보냅니다.</li>
         </ul>
         <h4>제약</h4>
         <ul>
-          <li><b>반전원 개수는 두 키프레임에서 같아야 합니다.</b> 마지막 프레임에서는 추가·삭제 버튼이 잠겨 있으니, 개수 변경은 <b>첫 프레임</b>에서 먼저 정한 뒤 마지막 프레임으로 가서 위치·반지름·강도만 다르게 편집하세요.</li>
-          <li>저장 해상도는 현재 미리보기 기준입니다 (긴 변 최대 900 px).</li>
-          <li>v1은 두 개의 키프레임만 지원합니다.</li>
+          <li><b>반전원 개수는 두 키프레임에서 같아야 합니다.</b> 마지막 프레임에서는 추가·삭제 버튼이 잠겨 있으니, 개수 변경은 <b>첫 프레임</b>에서 먼저 정한 뒤 마지막 프레임에서 위치·반지름·강도만 편집하세요.</li>
+          <li><b>길이는 최대 4초까지</b>로 제한됩니다 (인코더 안정성을 위해).</li>
+          <li><b>반전원 반지름은 최대 1000 px까지</b> 입니다.</li>
+          <li>저장 해상도는 미리보기 기준입니다 (긴 변 최대 900 px).</li>
         </ul>
+        <h4>코덱</h4>
+        <p>포맷에 맞는 코덱 중에서 직접 고를 수 있습니다. <b>자동</b>은 가장 호환되는 코덱을 자동으로 선택. iOS Safari 등 일부 환경에서는 한 코덱이 안 되면 다른 코덱이 동작할 수 있으니, 저장이 안 되면 코덱을 바꿔서 시도해 보세요.</p>
       `,
       animFormatExplain: `
         <h3>애니메이션 포맷</h3>
@@ -1446,6 +1454,9 @@
       animBtnTitle: 'Start animation',
       animSaveVideo: 'Save video',
       animLastLockHint: 'The number of circles is locked on the last frame. Adjust it on the first frame.',
+      animCodec: 'Codec',
+      codecAuto: 'Auto',
+      radiusCappedToast: `Radius is capped at ${1000}px.`,
       animFormat: 'Format',
       animEasingLabel: 'Interpolation',
       easingLinear: 'Linear',
@@ -1464,15 +1475,18 @@
         <ul>
           <li>Click the header <b>Animate</b> button to enter the mode. The current configuration is copied into both keyframes.</li>
           <li>Use the banner at the top of the source panel to switch between <b>First / Last</b> and edit each frame separately (circle positions, radii, strength, …).</li>
-          <li>The banner also exposes <b>Duration</b> (seconds), <b>FPS</b>, <b>Format</b> (MP4 / WebM), and the <b>Interpolation</b> curve. Total frames = Duration × FPS.</li>
+          <li>The banner also exposes <b>Duration</b> (seconds), <b>FPS</b>, <b>Format</b> (MP4 / WebM), <b>Codec</b>, and the <b>Interpolation</b> curve. Total frames = Duration × FPS.</li>
           <li>Press the banner's <b>Save video</b> button to render every interpolated frame and write the result to a video file.</li>
         </ul>
         <h4>Constraints</h4>
         <ul>
           <li><b>The two keyframes must have the same number of circles.</b> Add / remove buttons are locked on the last frame, so set the count on the <b>first frame</b> first, then switch to the last frame and only edit positions, radii, and strength there.</li>
+          <li><b>Duration is capped at 4 seconds</b> for encoder stability.</li>
+          <li><b>Inversion-circle radius is capped at 1000 px.</b></li>
           <li>v1 renders at the current preview resolution (≤ 900 px on the longer side).</li>
-          <li>Only one pair of keyframes is supported in v1.</li>
         </ul>
+        <h4>Codec</h4>
+        <p>You can pick a specific codec for the chosen format, or leave it on <b>Auto</b> to use the most compatible one. On some browsers (notably iOS Safari) one codec may fail where another works, so try a different codec if a save fails.</p>
       `,
       animFormatExplain: `
         <h3>Animation format</h3>
@@ -1680,6 +1694,7 @@
     });
     if (state.previewData) updateMeta();
     if (typeof renderPresetSlots === 'function') renderPresetSlots();
+    if (typeof updateCodecOptions === 'function') updateCodecOptions();
   }
 
   function getHashParams() {
@@ -2678,7 +2693,15 @@
       state.cx = clamp(x + (state.dragOffsetX || 0), 0, state.previewW);
       state.cy = clamp(y + (state.dragOffsetY || 0), 0, state.previewH);
     } else if (state.dragMode === 'resize') {
-      state.r = Math.min(MAX_RADIUS, Math.max(1, Math.hypot(x - state.cx, y - state.cy)));
+      const rawR = Math.max(1, Math.hypot(x - state.cx, y - state.cy));
+      if (rawR > MAX_RADIUS) {
+        const now = performance.now();
+        if (now - radiusToastShownAt > 1500) {
+          showToast(T[currentLang].radiusCappedToast);
+          radiusToastShownAt = now;
+        }
+      }
+      state.r = Math.min(MAX_RADIUS, rawR);
       leftCanvas.style.cursor = resizeCursorFor(x - state.cx, y - state.cy);
     }
     updateInputs();
@@ -2714,10 +2737,19 @@
       requestRender();
     }
   });
+  let radiusToastShownAt = 0;
   rInput.addEventListener('input', () => {
     if (!state.previewData) return;
     const v = parseFloat(rInput.value);
     if (!isNaN(v) && v > 0) {
+      if (v > MAX_RADIUS) {
+        const now = performance.now();
+        if (now - radiusToastShownAt > 1500) {
+          showToast(T[currentLang].radiusCappedToast);
+          radiusToastShownAt = now;
+        }
+        rInput.value = String(MAX_RADIUS);
+      }
       state.r = Math.min(MAX_RADIUS, v);
       updateMeta();
       requestRender();
@@ -3438,6 +3470,7 @@
   const animFpsInput = document.getElementById('animFps');
   const animFormatSelect = document.getElementById('animFormat');
   const animEasingSelect = document.getElementById('animEasing');
+  const animCodecSelect = document.getElementById('animCodec');
   const animBannerInfoBtn = document.getElementById('animBannerInfo');
   const animRenderModal = document.getElementById('animRenderModal');
   const animProgressFill = document.getElementById('animProgressFill');
@@ -3447,21 +3480,73 @@
 
   let animCancelRequested = false;
 
-  function detectMp4Support() {
+  const MP4_CODECS = [
+    { value: 'auto', labelKey: 'codecAuto' },
+    { value: 'avc1.42E01F', label: 'H.264 Baseline' },
+    { value: 'avc1.4D0028', label: 'H.264 Main' },
+    { value: 'avc1.640028', label: 'H.264 High' },
+  ];
+  const WEBM_CODECS = [
+    { value: 'auto', labelKey: 'codecAuto' },
+    { value: 'vp09.00.10.08', label: 'VP9' },
+    { value: 'vp8', label: 'VP8' },
+  ];
+  function updateCodecOptions() {
+    const fmt = animFormatSelect.value;
+    const codecs = fmt === 'mp4' ? MP4_CODECS : WEBM_CODECS;
+    const prev = animCodecSelect.value;
+    animCodecSelect.innerHTML = '';
+    for (const c of codecs) {
+      const o = document.createElement('option');
+      o.value = c.value;
+      o.textContent = c.label || (T[currentLang] && T[currentLang][c.labelKey]) || c.value;
+      animCodecSelect.appendChild(o);
+    }
+    if ([...animCodecSelect.options].some((o) => o.value === prev)) {
+      animCodecSelect.value = prev;
+    } else {
+      animCodecSelect.value = 'auto';
+    }
+  }
+  animFormatSelect.addEventListener('change', updateCodecOptions);
+  updateCodecOptions();
+
+  function detectMp4ViaMediaRecorder() {
     try {
       return typeof MediaRecorder !== 'undefined' &&
         MediaRecorder.isTypeSupported('video/mp4;codecs=avc1');
     } catch { return false; }
   }
-  function ensureFormatAvailability() {
-    const mp4Ok = detectMp4Support();
+  async function detectMp4ViaWebCodecs() {
+    if (typeof VideoEncoder !== 'function') return false;
+    for (const c of ['avc1.42E01F', 'avc1.4D0028', 'avc1.640028']) {
+      try {
+        const r = await VideoEncoder.isConfigSupported({
+          codec: c, width: 640, height: 480, bitrate: 1_000_000, framerate: 30,
+        });
+        if (r && r.supported) return true;
+      } catch {}
+    }
+    return false;
+  }
+  async function ensureFormatAvailability() {
+    const mp4Ok = detectMp4ViaMediaRecorder() || await detectMp4ViaWebCodecs();
     const opt = animFormatSelect.querySelector('option[value="mp4"]');
     if (opt) opt.disabled = !mp4Ok;
-    if (!mp4Ok && animFormatSelect.value === 'mp4') animFormatSelect.value = 'webm';
+    if (!mp4Ok && animFormatSelect.value === 'mp4') {
+      animFormatSelect.value = 'webm';
+      updateCodecOptions();
+    }
   }
   ensureFormatAvailability();
 
   animBannerInfoBtn.addEventListener('click', () => showInfoModal('animExplain'));
+
+  animDurationInput.addEventListener('change', () => {
+    const v = parseFloat(animDurationInput.value);
+    if (isNaN(v) || v < 0.5) animDurationInput.value = '0.5';
+    else if (v > 4) animDurationInput.value = '4';
+  });
 
   function captureFrameState() {
     return {
@@ -3623,12 +3708,14 @@
 
   async function renderAnimationWebCodecs() {
     const a = state.animation;
-    const dur = Math.max(0.1, parseFloat(animDurationInput.value) || 3);
+    const dur = Math.max(0.1, Math.min(4, parseFloat(animDurationInput.value) || 3));
     const fps = Math.max(1, Math.min(60, parseInt(animFpsInput.value, 10) || 60));
     const totalFrames = Math.max(1, Math.round(dur * fps));
     const w = state.previewW;
     const h = state.previewH;
-    let format = animFormatSelect.value;
+    const requestedFormat = animFormatSelect.value;
+    const userCodec = animCodecSelect.value;
+    let format = requestedFormat;
 
     async function configSupported(codec) {
       try {
@@ -3639,21 +3726,23 @@
       } catch { return false; }
     }
 
+    const mp4Candidates = ['avc1.42E01F', 'avc1.4D0028', 'avc1.640028', 'avc1.42001F'];
+    const webmCandidates = ['vp09.00.10.08', 'vp8'];
+
     let codecString = null;
-    if (format === 'mp4') {
-      for (const c of ['avc1.4D0028', 'avc1.42E01F', 'avc1.640028', 'avc1.42001F']) {
+    if (userCodec && userCodec !== 'auto') {
+      codecString = userCodec;
+    } else {
+      const candidates = format === 'mp4' ? mp4Candidates : webmCandidates;
+      for (const c of candidates) {
         if (await configSupported(c)) { codecString = c; break; }
       }
-      if (!codecString) {
-        format = 'webm';
-        showToast(T[currentLang].animMp4Unsupported);
+      if (!codecString && format === 'mp4') {
+        // optimistic try a single default; if it fails we'll fall back
+        codecString = mp4Candidates[0];
+      } else if (!codecString) {
+        codecString = webmCandidates[0];
       }
-    }
-    if (format === 'webm') {
-      for (const c of ['vp09.00.10.08', 'vp8']) {
-        if (await configSupported(c)) { codecString = c; break; }
-      }
-      if (!codecString) throw new Error('No supported WebCodecs codec for WebM');
     }
 
     const muxerLib = await loadMuxerLib(format);
@@ -3695,11 +3784,8 @@
 
     animCancelRequested = false;
     animRenderModal.hidden = false;
-    animProgressFill.style.transition = 'none';
     animProgressFill.style.width = '0%';
     animProgressText.textContent = T[currentLang].animFrameProgress(0, totalFrames);
-    animProgressFill.getBoundingClientRect();
-    animProgressFill.style.transition = '';
     saveAnimBtn.disabled = true;
 
     try {
@@ -3759,12 +3845,12 @@
 
   async function renderAnimationMediaRecorder() {
     const a = state.animation;
-    const dur = Math.max(0.1, parseFloat(animDurationInput.value) || 3);
+    const dur = Math.max(0.1, Math.min(4, parseFloat(animDurationInput.value) || 3));
     const fps = Math.max(1, Math.min(60, parseInt(animFpsInput.value, 10) || 30));
     const totalFrames = Math.max(1, Math.round(dur * fps));
 
     let mimeType;
-    if (animFormatSelect.value === 'mp4' && detectMp4Support()) {
+    if (animFormatSelect.value === 'mp4' && detectMp4ViaMediaRecorder()) {
       mimeType = 'video/mp4;codecs=avc1';
     } else {
       mimeType = 'video/webm;codecs=vp9';
