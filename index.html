@@ -553,6 +553,20 @@
           <button type="button" class="info-icon" id="gridInfo" data-i18n-title="info" title="설명">i</button>
         </div>
         <div class="check-row">
+          <span data-i18n="preset" style="color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:0.05em;">프리셋:</span>
+          <button id="preset3Btn" type="button" data-i18n="presetApollonian3">Apollonian (3)</button>
+          <button id="preset4Btn" type="button" data-i18n="presetApollonian4">Apollonian (3+외곽)</button>
+          <button type="button" class="info-icon" id="presetInfo" data-i18n-title="info" title="설명">i</button>
+        </div>
+        <div class="check-row">
+          <label><input type="checkbox" id="gasketOverlay"> <span data-i18n="gasketOverlay">가스킷 오버레이</span></label>
+          <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px;">
+            <span style="font-size:12px; color:var(--muted)" data-i18n="gasketDepth">깊이</span>
+            <input type="number" id="gasketDepth" min="1" max="6" step="1" value="4" style="width:60px; background:#0a0d11; border:1px solid var(--border); color:var(--text); padding:4px 6px; border-radius:5px; font-size:13px;">
+          </label>
+          <button type="button" class="info-icon" id="gasketInfo" data-i18n-title="info" title="설명">i</button>
+        </div>
+        <div class="check-row">
           <label><input type="checkbox" id="groupViz"> <span data-i18n="groupViz">군 시각화 (2 원)</span></label>
           <button type="button" class="info-icon" id="groupVizInfo" data-i18n-title="info" title="설명">i</button>
         </div>
@@ -792,6 +806,10 @@
   const zoomLabel = document.getElementById('zoomLabel');
   const gridOverlay = document.getElementById('gridOverlay');
   const gridSpacing = document.getElementById('gridSpacing');
+  const preset3Btn = document.getElementById('preset3Btn');
+  const preset4Btn = document.getElementById('preset4Btn');
+  const gasketOverlayCheck = document.getElementById('gasketOverlay');
+  const gasketDepthInput = document.getElementById('gasketDepth');
   const groupVizCheck = document.getElementById('groupViz');
   const groupVizInfoBtn = document.getElementById('groupVizInfo');
   const orbitModeBtn = document.getElementById('orbitModeBtn');
@@ -906,6 +924,32 @@
         <p>왼쪽 원본 캔버스에 흰색 직선 격자를 그리고, 오른쪽 결과 캔버스에는 그 격자가 반전 변환(여러 원이 있다면 그 합성)을 거친 모습을 그립니다.</p>
         <p>반전 중심을 지나는 직선은 변환 후에도 자기 자신이지만, 나머지 직선은 중심을 지나는 원으로 매핑됩니다. 여러 원의 합성에서는 더 복잡한 곡선이 나타납니다 — 변환의 기하학적 효과를 한눈에 보는 도구로 좋습니다.</p>
         <p>간격은 픽셀 단위이며, 좌측 격자의 가로·세로 간격을 결정합니다.</p>
+      `,
+      preset: '프리셋:',
+      presetApollonian3: 'Apollonian (3)',
+      presetApollonian4: 'Apollonian (3+외곽)',
+      gasketOverlay: '가스킷 오버레이',
+      gasketDepth: '깊이',
+      presetExplain: `
+        <h3>프리셋</h3>
+        <p>반전원을 미리 정의된 기하학적 배치로 한 번에 교체합니다. 현재 원 설정은 덮어쓰여요.</p>
+        <h4>옵션</h4>
+        <ul>
+          <li><b>Apollonian (3)</b> — 같은 크기의 외접하는 세 원이 정삼각형 모양으로 캔버스 중앙에 배치됩니다. 합성 Möbius·가스킷 탐험의 출발점.</li>
+          <li><b>Apollonian (3+외곽)</b> — 위 셋을 둘러싸는 큰 원이 하나 더 추가됩니다. 네 원이 모두 서로 접하는 표준 Apollonian 설정 (Descartes 정리에서 음수 곡률 해에 해당).</li>
+        </ul>
+        <p>적용 후에도 각 원의 위치와 반지름을 자유롭게 드래그하거나 입력으로 수정할 수 있습니다.</p>
+      `,
+      gasketExplain: `
+        <h3>가스킷 오버레이</h3>
+        <p>현재 반전원들에서 출발해, 한 원을 다른 원에 대해 반전한 새 원들을 깊이 N까지 재귀적으로 만들어 좌측 캔버스 위에 점선으로 표시합니다. Apollonian 프리셋과 함께 보면 <b>Apollonian gasket</b> 프랙탈이 모습을 드러냅니다.</p>
+        <h4>원리</h4>
+        <p>임의의 두 원 사이에 σ_i(c) 처럼 한 원을 다른 원에 대해 반전하면 새 원이 만들어집니다. 이 과정을 반복하면 점점 작아지는 무한히 많은 접하는 원들이 생기고, 그 closure가 차원 약 1.305의 프랙탈인 Apollonian gasket이 됩니다. 이 도구는 그 가스킷을 깊이 N까지 근사해 그립니다.</p>
+        <h4>옵션</h4>
+        <ul>
+          <li><b>깊이</b> — 재귀를 몇 단계까지 풀지. 깊을수록 더 작은 원들까지 나타나고 화려해지지만 너무 깊으면 sub-pixel 원이 많아져 의미가 적어집니다. 1~6 권장.</li>
+        </ul>
+        <p>오버레이는 좌측(원본) 캔버스에만 그려지며, 노란색 점선으로 합성 반전원 위에 겹쳐 표시됩니다.</p>
       `,
       groupVizExplain: `
         <h3>군 시각화 — Möbius 변환의 구조</h3>
@@ -1052,6 +1096,32 @@
         <p>Draws a fixed white Cartesian grid on the left (source) canvas and the image of that grid through the current inversion — or the composition of all inversion circles — on the right canvas.</p>
         <p>A line through the inversion center maps to itself; every other straight line maps to a circle through the inversion center. With multiple circles the curves get richer. It's a quick way to see the geometric effect of the transformation.</p>
         <p>The spacing is in source pixels and controls both the horizontal and vertical pitch on the left canvas.</p>
+      `,
+      preset: 'Preset:',
+      presetApollonian3: 'Apollonian (3)',
+      presetApollonian4: 'Apollonian (3 + outer)',
+      gasketOverlay: 'Gasket overlay',
+      gasketDepth: 'Depth',
+      presetExplain: `
+        <h3>Presets</h3>
+        <p>Replace the current circles with a predefined geometric configuration. The existing circles are overwritten.</p>
+        <h4>Options</h4>
+        <ul>
+          <li><b>Apollonian (3)</b> — three equal externally-tangent circles arranged in an equilateral triangle at the canvas center. The starting point for composed Möbius / gasket exploration.</li>
+          <li><b>Apollonian (3 + outer)</b> — adds a fourth circle that encloses the three, all mutually tangent. The standard Apollonian configuration (corresponds to the negative-curvature solution of the Descartes circle theorem).</li>
+        </ul>
+        <p>After applying a preset you can still drag or type to fine-tune each circle.</p>
+      `,
+      gasketExplain: `
+        <h3>Gasket overlay</h3>
+        <p>Starting from the current inversion circles, recursively invert each circle in every other up to depth N and draw all the resulting circles on the left canvas as dashed outlines. Combined with the Apollonian preset, this reveals the <b>Apollonian gasket</b> fractal.</p>
+        <h4>How it works</h4>
+        <p>Inverting one circle in another, σ_i(c), produces a new circle. Iterating this builds an ever-shrinking family of mutually tangent circles whose closure is the Apollonian gasket — a fractal with Hausdorff dimension ≈ 1.305. This option approximates the gasket up to depth N.</p>
+        <h4>Options</h4>
+        <ul>
+          <li><b>Depth</b> — how many recursion levels to unfold. Higher values reveal smaller circles, but past a point sub-pixel circles add little. 1–6 recommended.</li>
+        </ul>
+        <p>The overlay is drawn only on the left (source) canvas in dashed yellow on top of the existing circle markers.</p>
       `,
       groupVizExplain: `
         <h3>Group exploration — anatomy of the Möbius transformation</h3>
@@ -1275,6 +1345,8 @@
     groupViz: false,
     orbitMode: false,
     orbitSeeds: [],
+    gasketOverlay: false,
+    gasketDepth: 4,
     get cx() { return this.circles[this.activeIndex].cx; },
     set cx(v) { this.circles[this.activeIndex].cx = v; },
     get cy() { return this.circles[this.activeIndex].cy; },
@@ -1799,7 +1871,97 @@
     lctx.stroke();
     lctx.restore();
 
+    drawGasketOverlay();
     drawGroupVisualization();
+  }
+
+  function invertCircleInCircle(c, inv) {
+    const dx = c.cx - inv.cx;
+    const dy = c.cy - inv.cy;
+    const d2 = dx * dx + dy * dy;
+    const denom = d2 - c.r * c.r;
+    if (Math.abs(denom) < 1e-6) return null;
+    const k = inv.r * inv.r / denom;
+    return {
+      cx: inv.cx + dx * k,
+      cy: inv.cy + dy * k,
+      r: inv.r * inv.r * c.r / Math.abs(denom),
+    };
+  }
+
+  function generateGasketCircles(initial, maxDepth) {
+    if (initial.length < 2) return [...initial];
+    const out = [];
+    const seen = new Set();
+    const QUANT = 0.5;
+    function add(c) {
+      if (!isFinite(c.cx) || !isFinite(c.cy) || !isFinite(c.r)) return false;
+      if (c.r < 0.5 || c.r > 1e5) return false;
+      const k = `${Math.round(c.cx / QUANT)},${Math.round(c.cy / QUANT)},${Math.round(c.r / QUANT)}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      out.push(c);
+      return true;
+    }
+    for (const c of initial) add(c);
+    let frontier = initial.slice();
+    for (let d = 0; d < maxDepth; d++) {
+      const next = [];
+      for (const c of frontier) {
+        for (const inv of initial) {
+          if (inv === c) continue;
+          const nc = invertCircleInCircle(c, inv);
+          if (nc && add(nc)) next.push(nc);
+          if (out.length > 5000) break;
+        }
+        if (out.length > 5000) break;
+      }
+      frontier = next;
+      if (!frontier.length || out.length > 5000) break;
+    }
+    return out;
+  }
+
+  function drawGasketOverlay() {
+    if (!state.gasketOverlay || !state.previewData) return;
+    if (state.circles.length < 2) return;
+    const depth = Math.max(1, Math.min(6, parseInt(state.gasketDepth, 10) || 4));
+    const circles = generateGasketCircles(state.circles, depth);
+    lctx.save();
+    lctx.strokeStyle = 'rgba(255,210,90,0.55)';
+    lctx.lineWidth = 0.9;
+    lctx.setLineDash([4, 3]);
+    for (const c of circles) {
+      if (c.r < 0.4 || c.r > 1e5) continue;
+      lctx.beginPath();
+      lctx.arc(c.cx, c.cy, c.r, 0, Math.PI * 2);
+      lctx.stroke();
+    }
+    lctx.restore();
+  }
+
+  function applyApollonianPreset(withOuter) {
+    if (!state.previewData) return;
+    const w = state.previewW, h = state.previewH;
+    const cx = w / 2, cy = h / 2;
+    const minD = Math.min(w, h);
+    const r = minD * 0.18;
+    const D = 2 * r / Math.sqrt(3);
+    const circles = [
+      { cx: cx, cy: cy - D, r },
+      { cx: cx - r, cy: cy + D / 2, r },
+      { cx: cx + r, cy: cy + D / 2, r },
+    ];
+    if (withOuter) {
+      circles.push({ cx: cx, cy: cy, r: r * (2 * Math.sqrt(3) + 3) / 3 });
+    }
+    state.circles = circles;
+    state.activeIndex = 0;
+    renderCircleList();
+    updateInputs();
+    updateMeta();
+    requestRender();
+    pushSnapshot();
   }
 
   function shouldShowGroupViz() {
@@ -2198,6 +2360,26 @@
   function closeInfoModal() { infoModal.hidden = true; }
   groupVizInfoBtn.addEventListener('click', () => showInfoModal('groupVizExplain'));
   document.getElementById('aboutInfo').addEventListener('click', () => showInfoModal('aboutExplain'));
+  document.getElementById('presetInfo').addEventListener('click', () => showInfoModal('presetExplain'));
+  document.getElementById('gasketInfo').addEventListener('click', () => showInfoModal('gasketExplain'));
+  preset3Btn.addEventListener('click', () => applyApollonianPreset(false));
+  preset4Btn.addEventListener('click', () => applyApollonianPreset(true));
+  gasketOverlayCheck.addEventListener('change', () => {
+    state.gasketOverlay = gasketOverlayCheck.checked;
+    drawOverlay();
+    scheduleHashWrite();
+  });
+  gasketDepthInput.addEventListener('input', () => {
+    const v = parseInt(gasketDepthInput.value, 10);
+    if (isFinite(v) && v >= 1 && v <= 6) {
+      state.gasketDepth = v;
+      if (state.gasketOverlay) drawOverlay();
+    }
+  });
+  gasketDepthInput.addEventListener('change', () => {
+    scheduleHashWrite();
+    pushSnapshot();
+  });
   document.getElementById('strengthInfo').addEventListener('click', () => showInfoModal('strengthExplain'));
   document.getElementById('fillInfo').addEventListener('click', () => showInfoModal('fillExplain'));
   document.getElementById('samplingInfo').addEventListener('click', () => showInfoModal('samplingExplain'));
