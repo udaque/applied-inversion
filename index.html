@@ -1816,6 +1816,7 @@
   const lctx = leftCanvas.getContext('2d');
 
   const MAX_DIM = 900;
+  const MAX_RADIUS = 1000;
 
   const supportsOffscreen =
     'transferControlToOffscreen' in HTMLCanvasElement.prototype &&
@@ -2280,7 +2281,7 @@
     cxInput.value = (state.cx / state.previewW * 100).toFixed(2);
     cyInput.value = (state.cy / state.previewH * 100).toFixed(2);
     rInput.value = Math.round(state.r);
-    rInput.max = Math.max(state.previewW, state.previewH) * 4;
+    rInput.max = MAX_RADIUS;
     strengthInput.value = Math.round(state.strength * 100);
     strengthValue.textContent = `${Math.round(state.strength * 100)}%`;
   }
@@ -2677,7 +2678,7 @@
       state.cx = clamp(x + (state.dragOffsetX || 0), 0, state.previewW);
       state.cy = clamp(y + (state.dragOffsetY || 0), 0, state.previewH);
     } else if (state.dragMode === 'resize') {
-      state.r = Math.max(1, Math.hypot(x - state.cx, y - state.cy));
+      state.r = Math.min(MAX_RADIUS, Math.max(1, Math.hypot(x - state.cx, y - state.cy)));
       leftCanvas.style.cursor = resizeCursorFor(x - state.cx, y - state.cy);
     }
     updateInputs();
@@ -2717,7 +2718,7 @@
     if (!state.previewData) return;
     const v = parseFloat(rInput.value);
     if (!isNaN(v) && v > 0) {
-      state.r = v;
+      state.r = Math.min(MAX_RADIUS, v);
       updateMeta();
       requestRender();
     }
