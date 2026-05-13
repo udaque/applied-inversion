@@ -3568,6 +3568,8 @@
     }
     const a = state.animation;
     if (!a || !a.first || !a.last) return;
+    // Flush current edits into the active keyframe before rendering
+    a[a.editingFrame] = captureFrameState();
     const dur = Math.max(0.1, parseFloat(animDurationInput.value) || 3);
     const fps = Math.max(1, Math.min(60, parseInt(animFpsInput.value, 10) || 30));
     const totalFrames = Math.max(1, Math.round(dur * fps));
