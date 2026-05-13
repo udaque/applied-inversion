@@ -204,12 +204,9 @@
   }
   .controls {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     margin-top: 12px;
-  }
-  @media (max-width: 600px) {
-    .controls { grid-template-columns: 1fr; }
   }
   .control { display: flex; flex-direction: column; gap: 4px; }
   .control label {
@@ -1185,7 +1182,7 @@
       uploadPrompt: '이미지를 업로드해 주세요',
       cx: '중심 X (%)',
       cy: '중심 Y (%)',
-      radius: '반지름 (px, 미리보기 기준)',
+      radius: '반지름 (px)',
       strength: '강도',
       advanced: '고급 옵션',
       sectionImage: '이미지',
@@ -1444,7 +1441,7 @@
       uploadPrompt: 'Upload an image',
       cx: 'Center X (%)',
       cy: 'Center Y (%)',
-      radius: 'Radius (px, preview scale)',
+      radius: 'Radius (px)',
       strength: 'Strength',
       advanced: 'Advanced options',
       sectionImage: 'Image',
