@@ -3619,6 +3619,11 @@
 
     animCancelRequested = false;
     animRenderModal.hidden = false;
+    animProgressFill.style.transition = 'none';
+    animProgressFill.style.width = '0%';
+    animProgressText.textContent = T[currentLang].animFrameProgress(0, totalFrames);
+    animProgressFill.getBoundingClientRect();
+    animProgressFill.style.transition = '';
     saveBtn.disabled = true;
     const prevText = saveBtn.textContent;
     saveBtn.textContent = T[currentLang].saving;
