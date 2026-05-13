@@ -381,11 +381,6 @@
       <option value="en">English</option>
     </select>
     <input type="file" id="fileInput" accept="image/*">
-    <select id="formatSelect" title="Save format">
-      <option value="image/png">PNG</option>
-      <option value="image/jpeg">JPEG</option>
-      <option value="image/webp">WEBP</option>
-    </select>
     <button id="undoBtn" type="button" data-i18n-title="undo" disabled>↶</button>
     <button id="redoBtn" type="button" data-i18n-title="redo" disabled>↷</button>
     <button id="saveBtn" class="primary" data-i18n="save">저장</button>
@@ -462,7 +457,15 @@
           <label><input type="radio" name="sampling" value="bilinear" checked> <span data-i18n="samplingBilinear">Bilinear (부드러움)</span></label>
         </div>
         <div class="check-row">
-          <label><input type="checkbox" id="saveFullRes" checked> <span data-i18n="saveFullRes">원본 해상도로 저장</span></label>
+          <label style="display:inline-flex; gap:6px; align-items:center;">
+            <span data-i18n="saveFormat">저장 포맷</span>
+            <select id="formatSelect">
+              <option value="image/png">PNG</option>
+              <option value="image/jpeg">JPEG</option>
+              <option value="image/webp">WEBP</option>
+            </select>
+          </label>
+          <label style="margin-left:12px;"><input type="checkbox" id="saveFullRes" checked> <span data-i18n="saveFullRes">원본 해상도로 저장</span></label>
         </div>
         <div class="check-row">
           <label><input type="checkbox" id="gridOverlay"> <span data-i18n="gridOverlay">그리드 오버레이</span></label>
@@ -736,6 +739,7 @@
       sampling: '샘플링:',
       samplingNearest: 'Nearest (빠름)',
       samplingBilinear: 'Bilinear (부드러움)',
+      saveFormat: '저장 포맷',
       saveFullRes: '원본 해상도로 저장',
       gridOverlay: '그리드 오버레이',
       gridSpacing: '간격(px)',
@@ -785,6 +789,7 @@
       sampling: 'Sampling:',
       samplingNearest: 'Nearest (fast)',
       samplingBilinear: 'Bilinear (smooth)',
+      saveFormat: 'Save format',
       saveFullRes: 'Save at original resolution',
       gridOverlay: 'Grid overlay',
       gridSpacing: 'Spacing (px)',
