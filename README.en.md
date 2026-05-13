@@ -120,7 +120,7 @@ No dependencies — no package manager, no build tooling, no external scripts.
 
 ## 👤 Author
 
-[udaque](https://bsky.app/profile/udaqueness.blog)
+[udaque](https://bsky.app/profile/udaqueness.blog) — built with [Claude Code](https://claude.com/claude-code).
 
 ---
 

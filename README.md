@@ -120,7 +120,7 @@ applied-inversion/
 
 ## 👤 만든 사람
 
-[udaque](https://bsky.app/profile/udaqueness.blog)
+[udaque](https://bsky.app/profile/udaqueness.blog) — [Claude Code](https://claude.com/claude-code)와 함께 만들었습니다.
 
 ---
 
