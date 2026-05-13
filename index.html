@@ -101,6 +101,88 @@
   }
   @media (max-width: 900px) {
     main { grid-template-columns: 1fr; }
+    main > section.right-panel:not(.pip-expanded) {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      width: min(42vw, 200px);
+      padding: 6px;
+      z-index: 50;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+      border-color: var(--accent);
+      cursor: pointer;
+    }
+    main > section.right-panel:not(.pip-expanded) h2,
+    main > section.right-panel:not(.pip-expanded) .view-controls,
+    main > section.right-panel:not(.pip-expanded) .hint {
+      display: none;
+    }
+    main > section.right-panel:not(.pip-expanded) .canvas-wrap {
+      min-height: 0;
+    }
+    main > section.right-panel:not(.pip-expanded) #rightCanvas,
+    main > section.right-panel:not(.pip-expanded) #rightOverlay {
+      pointer-events: none;
+    }
+    main > section.right-panel:not(.pip-expanded) .pip-toggle {
+      display: none;
+    }
+    main > section.right-panel:not(.pip-expanded) .pip-tap-hint {
+      display: block;
+    }
+    main > section.right-panel.pip-expanded {
+      position: fixed;
+      inset: 0;
+      width: auto;
+      z-index: 1000;
+      border-radius: 0;
+      background: var(--panel);
+      padding: 12px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    main > section.right-panel.pip-expanded .canvas-wrap {
+      flex: 1;
+      min-height: 0;
+      aspect-ratio: auto !important;
+    }
+    main > section.right-panel:not(.has-image):not(.pip-expanded) {
+      display: none;
+    }
+    main > section.right-panel.pip-expanded #rightCanvas,
+    main > section.right-panel.pip-expanded #rightOverlay {
+      width: 100%;
+      height: 100%;
+    }
+  }
+  .pip-toggle {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1;
+    padding: 6px 9px;
+    border-radius: 6px;
+    z-index: 2;
+  }
+  main > section.right-panel.pip-expanded .pip-toggle { display: inline-flex; align-items: center; }
+  .pip-tap-hint {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.55);
+    color: var(--text);
+    font-size: 11px;
+    padding: 3px 4px;
+    pointer-events: none;
   }
   .panel {
     background: var(--panel);
@@ -921,12 +1003,14 @@
     </div>
   </section>
 
-  <section class="panel">
+  <section class="panel right-panel" id="rightPanel">
     <h2 data-i18n="rightPanel">반전 결과</h2>
+    <button type="button" id="pipToggleBtn" class="pip-toggle" aria-label="Expand" data-i18n-title="pipExpand" title="확대">⤢</button>
     <div class="canvas-wrap" id="rightWrap">
       <div class="empty-msg" id="rightEmpty" data-i18n="rightPlaceholder">결과가 여기에 표시됩니다</div>
       <canvas id="rightCanvas" style="display:none"></canvas>
       <canvas id="rightOverlay" style="display:none"></canvas>
+      <div class="pip-tap-hint" id="pipTapHint" data-i18n="pipTapHint">탭하면 확대</div>
     </div>
     <div class="view-controls">
       <button id="resetViewBtn" type="button" data-i18n="resetView">화면 맞춤</button>
@@ -1214,6 +1298,9 @@
       animFormat: '포맷',
       animEasingLabel: '보간',
       animFullRes: '원본 해상도',
+      pipExpand: '결과 확대',
+      pipCollapse: '미니뷰로 돌리기',
+      pipTapHint: '탭하면 확대',
       easingLinear: '선형',
       easingEaseInOut: 'Ease-in-out',
       easingSmoothstep: 'Smoothstep',
@@ -1476,6 +1563,9 @@
       animFormat: 'Format',
       animEasingLabel: 'Interpolation',
       animFullRes: 'Original resolution',
+      pipExpand: 'Expand result',
+      pipCollapse: 'Back to mini view',
+      pipTapHint: 'Tap to expand',
       easingLinear: 'Linear',
       easingEaseInOut: 'Ease-in-out',
       easingSmoothstep: 'Smoothstep',
@@ -4149,6 +4239,42 @@
   }
 
   resetViewBtn.addEventListener('click', resetView);
+
+  // ----- Floating PIP (mobile) -----
+  const rightPanel = document.getElementById('rightPanel');
+  const pipToggleBtn = document.getElementById('pipToggleBtn');
+  function isPipViewport() {
+    return window.matchMedia('(max-width: 900px)').matches;
+  }
+  function setPipExpanded(expanded) {
+    if (expanded) rightPanel.classList.add('pip-expanded');
+    else rightPanel.classList.remove('pip-expanded');
+    const key = expanded ? 'pipCollapse' : 'pipExpand';
+    pipToggleBtn.dataset.i18nTitle = key;
+    pipToggleBtn.title = (T[currentLang] && T[currentLang][key]) || pipToggleBtn.title;
+    pipToggleBtn.textContent = expanded ? '×' : '⤢';
+    // The wrap dimensions change drastically — refit so the result is visible.
+    requestAnimationFrame(() => {
+      resetView();
+    });
+  }
+  rightWrap.addEventListener('click', (e) => {
+    if (!isPipViewport()) return;
+    if (rightPanel.classList.contains('pip-expanded')) return;
+    if (!rightPanel.classList.contains('has-image')) return;
+    e.stopPropagation();
+    setPipExpanded(true);
+  }, true);
+  pipToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setPipExpanded(false);
+  });
+  // Mark "has image" so the empty PIP is hidden on mobile until upload completes.
+  const pipObserver = new MutationObserver(() => {
+    const shown = rightCanvas.style.display === 'block';
+    rightPanel.classList.toggle('has-image', shown);
+  });
+  pipObserver.observe(rightCanvas, { attributes: true, attributeFilter: ['style'] });
 
   rightCanvas.addEventListener('wheel', (e) => {
     if (!state.previewData) return;
