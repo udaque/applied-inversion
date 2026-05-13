@@ -824,7 +824,7 @@
       samplingBilinear: 'Bilinear (부드러움)',
       saveFormat: '저장 포맷',
       saveFullRes: '원본 해상도로 저장',
-      groupViz: '군 시각화 (2 원)',
+      groupViz: '군 시각화',
       orbitMode: '궤도 모드',
       clearOrbits: '궤도 지움',
       info: '설명',
@@ -834,6 +834,7 @@
       groupVizExplain: `
         <h3>군 시각화 — Möbius 변환의 구조</h3>
         <p>반전 원이 두 개일 때, 합성 <code>σ₂ ∘ σ₁</code> 은 한 개의 <b>Möbius 변환</b>입니다 (방향 보존). 두 원의 상대 위치에 따라 정확히 세 가지 종류 중 하나가 됩니다.</p>
+        <p style="color:var(--muted); font-size:12px;">※ 이 시각화는 반전 원이 정확히 두 개일 때만 활성화됩니다. 한 개이거나 셋 이상일 땐 오버레이가 표시되지 않습니다.</p>
         <h4>수학적 배경</h4>
         <ul>
           <li><b>Elliptic (회전)</b> — 두 원이 두 점에서 교차할 때. 그 두 교점이 변환의 고정점이며, 변환은 그 두 점 둘레로 도는 회전과 동치입니다 (회전각 = 두 원이 만나는 각도의 두 배).</li>
@@ -899,7 +900,7 @@
       samplingBilinear: 'Bilinear (smooth)',
       saveFormat: 'Save format',
       saveFullRes: 'Save at original resolution',
-      groupViz: 'Group exploration (2 circles)',
+      groupViz: 'Group exploration',
       orbitMode: 'Orbit mode',
       clearOrbits: 'Clear orbits',
       info: 'Info',
@@ -909,6 +910,7 @@
       groupVizExplain: `
         <h3>Group exploration — anatomy of the Möbius transformation</h3>
         <p>With two inversion circles, their composition <code>σ₂ ∘ σ₁</code> is a single <b>Möbius transformation</b> (orientation-preserving). It falls into exactly one of three classes depending on how the two circles are positioned.</p>
+        <p style="color:var(--muted); font-size:12px;">※ This overlay is only active when there are exactly two inversion circles. It does not appear with one circle or three or more.</p>
         <h4>Mathematical background</h4>
         <ul>
           <li><b>Elliptic (rotation)</b> — the two circles meet at two points. Those intersections are the fixed points of the composition, which acts as a rotation around them by twice the angle between the circles.</li>
