@@ -2221,6 +2221,10 @@
       rightWrap.style.aspectRatio = `${previewW} / ${previewH}`;
       rightWrap.style.minHeight = '0';
 
+      // Apply PIP/expanded layout synchronously so the wrap dimensions are settled
+      // before we read them to restore view.tx / view.ty from the URL hash below.
+      rightPanel.classList.add('has-image');
+
       const prevSuppress = suppressHashWrite;
       suppressHashWrite = true;
       resetView();
@@ -4281,16 +4285,25 @@
     return window.matchMedia('(max-width: 900px)').matches;
   }
   function setPipExpanded(expanded) {
+    const oldRect = rightWrap.getBoundingClientRect();
     if (expanded) rightPanel.classList.add('pip-expanded');
     else rightPanel.classList.remove('pip-expanded');
     const key = expanded ? 'pipCollapse' : 'pipExpand';
     pipToggleBtn.dataset.i18nTitle = key;
     pipToggleBtn.title = (T[currentLang] && T[currentLang][key]) || pipToggleBtn.title;
     pipToggleBtn.textContent = expanded ? '×' : '⤢';
-    // Wrap dimensions just changed — re-render at the new size but preserve
-    // any zoom/pan the user did while expanded.
+    // Wrap dimensions just changed. view.tx / view.ty are absolute pixel
+    // translations relative to the wrap, so we need to rescale them or the
+    // canvas pans off-screen in the smaller view (black PIP).
     requestAnimationFrame(() => {
-      scheduleHiResRender();
+      const newRect = rightWrap.getBoundingClientRect();
+      if (oldRect.width > 0 && oldRect.height > 0 && newRect.width > 0 && newRect.height > 0) {
+        view.tx *= newRect.width / oldRect.width;
+        view.ty *= newRect.height / oldRect.height;
+        applyView();
+      } else {
+        scheduleHiResRender();
+      }
     });
   }
   const PIP_ANIM_MS = 220;
