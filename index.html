@@ -2512,6 +2512,9 @@
   const MAX_SCALE = 40;
   const rightPointers = new Map();
   let lastPinch = null;
+  let lastTap = { time: 0, x: 0, y: 0 };
+  const DOUBLE_TAP_MS = 350;
+  const DOUBLE_TAP_DIST = 30;
 
   function applyView() {
     const t = `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`;
@@ -2557,6 +2560,22 @@
 
   rightCanvas.addEventListener('pointerdown', (e) => {
     if (!state.previewData) return;
+    const now = performance.now();
+    if (
+      rightPointers.size === 0 &&
+      now - lastTap.time < DOUBLE_TAP_MS &&
+      Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < DOUBLE_TAP_DIST
+    ) {
+      e.preventDefault();
+      lastTap = { time: 0, x: 0, y: 0 };
+      resetView();
+      return;
+    }
+    if (rightPointers.size === 0) {
+      lastTap = { time: now, x: e.clientX, y: e.clientY };
+    } else {
+      lastTap = { time: 0, x: 0, y: 0 };
+    }
     rightCanvas.setPointerCapture(e.pointerId);
     rightPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (rightPointers.size === 2) {
