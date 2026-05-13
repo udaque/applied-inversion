@@ -1356,8 +1356,6 @@
       animDuration: '길이',
       animFps: 'FPS',
       animSec: '초',
-      animModeLabel: '애니메이션',
-      animEnter: '애니메이션 시작',
       animBtnLabel: '애니메이션',
       animBtnTitle: '애니메이션 시작',
       animSaveVideo: '영상 저장',
@@ -1389,7 +1387,7 @@
         <ul>
           <li>헤더의 <b>애니메이션</b> 버튼을 누르면 모드 진입. 현재 상태가 첫 / 마지막 두 키프레임에 동일하게 복사됩니다.</li>
           <li>상단 배너에서 <b>첫 프레임 / 마지막 프레임</b>을 전환하며 각각 따로 편집 (반전원 위치·반지름, 강도 등).</li>
-          <li>배너에서 <b>길이</b>(초), <b>FPS</b>, <b>포맷</b>(MP4 / WebM), <b>코덱</b>, <b>보간</b> 방식을 설정. 총 프레임 수 = 길이 × FPS.</li>
+          <li>배너에서 <b>길이</b>(초), <b>FPS</b>, <b>포맷</b>(MP4 / WebM / GIF), <b>코덱</b>, <b>보간</b> 방식을 설정. 총 프레임 수 = 길이 × FPS.</li>
           <li>배너의 <b>영상 저장</b>을 누르면 보간된 프레임을 한 장씩 렌더링해 영상 파일을 내보냅니다.</li>
         </ul>
         <h4>제약</h4>
@@ -1408,24 +1406,6 @@
         </ul>
         <h4>코덱</h4>
         <p>MP4/WebM의 경우 포맷에 맞는 코덱 중에서 직접 고를 수 있습니다 (GIF는 256색 고정). <b>자동</b>은 가장 호환되는 코덱을 자동으로 선택. iOS Safari 등 일부 환경에서는 한 코덱이 안 되면 다른 코덱이 동작할 수 있으니, 저장이 안 되면 코덱을 바꿔서 시도해 보세요.</p>
-      `,
-      animFormatExplain: `
-        <h3>애니메이션 포맷</h3>
-        <ul>
-          <li><b>WebM</b> — VP9 코덱, 모던 브라우저·SNS 호환성 좋음. iOS Photos에는 직접 못 들어가서 Files로 빠짐.</li>
-          <li><b>MP4</b> — 더 보편적 (H.264). 브라우저가 MP4 인코딩을 지원할 때만 활성화. 미지원 시 WebM으로 폴백.</li>
-        </ul>
-        <p>현재 브라우저의 MediaRecorder가 지원하지 않는 포맷은 자동으로 비활성화됩니다.</p>
-      `,
-      animEasingExplain: `
-        <h3>보간 방식</h3>
-        <p>첫 프레임에서 마지막 프레임으로 가는 동안 시간 <code>t</code> 가 어떻게 변하는지를 결정합니다.</p>
-        <ul>
-          <li><b>선형 (Linear)</b> — 균등한 속도. 단순하고 직관적.</li>
-          <li><b>Ease-in-out</b> — 시작과 끝은 천천히, 중간은 빠르게. 가장 흔한 자연스러움.</li>
-          <li><b>Smoothstep</b> — 부드러운 다항식 곡선. Ease-in-out과 비슷하지만 더 깔끔.</li>
-          <li><b>Smootherstep</b> — 5차 다항식. 미분이 끝점에서 0이라 가장 부드러운 시작/끝.</li>
-        </ul>
       `,
       fillLabel: '채우기',
       fillBlack: '검정',
@@ -1622,8 +1602,6 @@
       animDuration: 'Duration',
       animFps: 'FPS',
       animSec: 's',
-      animModeLabel: 'Animation',
-      animEnter: 'Start animation',
       animBtnLabel: 'Animate',
       animBtnTitle: 'Start animation',
       animSaveVideo: 'Save video',
@@ -1655,7 +1633,7 @@
         <ul>
           <li>Click the header <b>Animate</b> button to enter the mode. The current configuration is copied into both keyframes.</li>
           <li>Use the banner at the top of the source panel to switch between <b>First / Last</b> and edit each frame separately (circle positions, radii, strength, …).</li>
-          <li>The banner also exposes <b>Duration</b> (seconds), <b>FPS</b>, <b>Format</b> (MP4 / WebM), <b>Codec</b>, and the <b>Interpolation</b> curve. Total frames = Duration × FPS.</li>
+          <li>The banner also exposes <b>Duration</b> (seconds), <b>FPS</b>, <b>Format</b> (MP4 / WebM / GIF), <b>Codec</b>, and the <b>Interpolation</b> curve. Total frames = Duration × FPS.</li>
           <li>Press the banner's <b>Save video</b> button to render every interpolated frame and write the result to a video file.</li>
         </ul>
         <h4>Constraints</h4>
@@ -1674,24 +1652,6 @@
         </ul>
         <h4>Codec</h4>
         <p>For MP4 and WebM you can pick a specific codec (GIF is always 256-color). <b>Auto</b> picks the most compatible one supported by the browser. On some browsers (notably iOS Safari) one codec may fail where another works, so try a different codec if a save fails.</p>
-      `,
-      animFormatExplain: `
-        <h3>Animation format</h3>
-        <ul>
-          <li><b>WebM</b> — VP9 codec, great compatibility with modern browsers and social platforms. iOS Photos won't accept it directly (saved into Files instead).</li>
-          <li><b>MP4</b> — more universal (H.264). Available only when the current browser's MediaRecorder supports MP4 output; otherwise we fall back to WebM.</li>
-        </ul>
-        <p>Formats the browser cannot encode are automatically disabled.</p>
-      `,
-      animEasingExplain: `
-        <h3>Interpolation</h3>
-        <p>How time <code>t</code> progresses from the first frame to the last.</p>
-        <ul>
-          <li><b>Linear</b> — constant speed. Straightforward.</li>
-          <li><b>Ease-in-out</b> — slow at the ends, fast in the middle. The most common natural feel.</li>
-          <li><b>Smoothstep</b> — smooth polynomial curve, similar to ease-in-out but cleaner.</li>
-          <li><b>Smootherstep</b> — fifth-order polynomial. Derivatives vanish at both ends, giving the smoothest possible start and finish.</li>
-        </ul>
       `,
       fillLabel: 'Fill',
       fillBlack: 'Black',
