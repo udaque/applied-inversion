@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **Applied Inversion** are recorded here.
+All notable changes to **Applied Inversive Geometry** are recorded here.
 Newest first.
 
 ---

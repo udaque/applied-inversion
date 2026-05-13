@@ -1,5 +1,5 @@
 {
-  "name": "Applied Inversion",
+  "name": "Applied Inversive Geometry",
   "short_name": "Inversion",
   "description": "Apply planar inversion to an image directly in the browser.",
   "start_url": "./",

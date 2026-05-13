@@ -1,4 +1,4 @@
-# Applied Inversion
+# Applied Inversive Geometry
 
 A browser-based image **inversion** tool. Upload a photo, pick the center and radius of an inversion circle, and watch the planar inversion render in real time. Compose multiple circles for a full Möbius transformation, and use the built-in visualizations to see the group structure and even Apollonian-style fractals that fall out of it.
 

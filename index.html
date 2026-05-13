@@ -583,7 +583,7 @@
 </head>
 <body>
 <header>
-  <h1 id="appTitle">Applied Inversion</h1>
+  <h1 id="appTitle">Applied Inversive Geometry</h1>
   <button type="button" class="info-icon" id="aboutInfo" data-i18n-title="info" title="설명">i</button>
   <div class="toolbar">
     <select id="langSelect" title="Language">
@@ -1034,7 +1034,7 @@
       typeParabolic: 'Parabolic',
       typeHyperbolic: 'Hyperbolic',
       aboutExplain: `
-        <h3>Applied Inversion</h3>
+        <h3>Applied Inversive Geometry</h3>
         <p>평면 기하학의 고전적 변환 중 하나인 <b>반전(inversion)</b>을 실제 이미지에 적용해보는 웹앱입니다.</p>
         <h4>반전이란?</h4>
         <p>평면 위에 중심 <i>O</i>와 반지름 <i>r</i>인 원이 주어졌을 때, 점 <i>P</i> (≠ <i>O</i>)는 반직선 <i>OP</i> 위에 있는 점 <i>Q</i>로 대응됩니다. 단,</p>
@@ -1168,8 +1168,8 @@
       shareNative: '기기 공유…',
       shareCopyLink: '링크 복사',
       shareIncludeSettings: '현재 설정 포함',
-      shareText: (v, url) => `이미지에 반전을 추가하다 — Applied Inversion v${v} — ${url}`,
-      shareTextShort: (v) => `이미지에 반전을 추가하다 — Applied Inversion v${v}`,
+      shareText: (v, url) => `이미지에 반전을 추가하다 — Applied Inversive Geometry v${v} — ${url}`,
+      shareTextShort: (v) => `이미지에 반전을 추가하다 — Applied Inversive Geometry v${v}`,
       toastImageCopied: '이미지가 클립보드에 복사됐어요. 작성창에 붙여넣기 하세요.',
       toastImageDownloaded: '이미지를 다운로드했어요. 작성창에 첨부하세요.',
       toastLinkCopied: '링크가 복사됐어요.',
@@ -1218,7 +1218,7 @@
       typeParabolic: 'Parabolic',
       typeHyperbolic: 'Hyperbolic',
       aboutExplain: `
-        <h3>Applied Inversion</h3>
+        <h3>Applied Inversive Geometry</h3>
         <p>A web app that lets you apply <b>inversion</b> — one of the classical transformations of plane geometry — to a real image.</p>
         <h4>What is inversion?</h4>
         <p>Given a circle in the plane with center <i>O</i> and radius <i>r</i>, every point <i>P</i> (≠ <i>O</i>) is mapped to the point <i>Q</i> on the ray <i>OP</i> that satisfies</p>
@@ -1352,8 +1352,8 @@
       shareNative: 'Device share…',
       shareCopyLink: 'Copy link',
       shareIncludeSettings: 'Include current settings',
-      shareText: (v, url) => `Inversion, applied. — Applied Inversion v${v} — ${url}`,
-      shareTextShort: (v) => `Inversion, applied. — Applied Inversion v${v}`,
+      shareText: (v, url) => `Inversion, applied. — Applied Inversive Geometry v${v} — ${url}`,
+      shareTextShort: (v) => `Inversion, applied. — Applied Inversive Geometry v${v}`,
       toastImageCopied: 'Image copied to clipboard. Paste it into the compose window.',
       toastImageDownloaded: 'Image downloaded. Attach it to your post.',
       toastLinkCopied: 'Link copied.',
@@ -3210,7 +3210,7 @@
   rightCanvas.addEventListener('pointercancel', endRightPointer);
 
   const VERSION = '0.3';
-  document.getElementById('appTitle').textContent = `Applied Inversion v${VERSION}`;
+  document.getElementById('appTitle').textContent = `Applied Inversive Geometry v${VERSION}`;
   const shareWrap = document.getElementById('shareWrap');
   const shareBtn = document.getElementById('shareBtn');
   const shareNativeBtn = document.getElementById('shareNativeBtn');
@@ -3331,7 +3331,7 @@
     if (platform === 'native' || platform === 'instagram') {
       if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], text, title: 'Applied Inversion' });
+          await navigator.share({ files: [file], text, title: 'Applied Inversive Geometry' });
           shareWrap.classList.remove('open');
           return;
         } catch (err) {
