@@ -66,6 +66,23 @@ Newest first.
   both `MediaRecorder.isTypeSupported` and `VideoEncoder.isConfigSupported`.
 - Animation render no longer freezes on the first frame — pending edits on
   the active keyframe are flushed before the render loop starts.
+- **Zoom / pan no longer reset when collapsing the PIP** back to mini view
+  (the unconditional `resetView` on expand/collapse was wiping the user's
+  view state). Wrap-size change now just re-triggers a hi-res render.
+- **PIP no longer goes black after expand-zoom-pan-collapse** — `view.tx`
+  / `view.ty` are absolute wrap pixels, so they're now rescaled by the
+  width/height ratio whenever the wrap dimensions change (expand ↔ collapse).
+- **Reload now restores both zoom and pan**, not just zoom. The
+  `has-image` class is added synchronously after the canvas displays so
+  the layout settles into the mobile PIP shape before the saved
+  `vtx`/`vty` fractions are multiplied by the wrap rect.
+- **Hi-res re-render no longer changes the result's vertical aspect.**
+  The hi-res bitmap is now sized at the source aspect ratio so the
+  inversion math (computed in output coordinates) stays isotropic — the
+  previous wrap-aspect bitmap made `sxScale ≠ syScale`, turning the
+  circle of inversion into an ellipse and visibly stretching the result
+  the moment hi-res replaced the preview (most apparent in the expanded
+  PIP layout).
 
 ---
 
